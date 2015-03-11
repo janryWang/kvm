@@ -3,7 +3,7 @@
 
 #API接口
 
-##KVM.module
+###KVM.module
 
  * KVM.module.define 定义模块
     这里，全局define也可以定义模块
@@ -73,57 +73,57 @@
   KVM.module.data(name);如果name为空返回所有配置，如果name不为空则返回相应的配置项
 ```
 
-##KVM.isArray 判断是否是数组
+###KVM.isArray 判断是否是数组
  
 
-##KVM.isString 判断是否是字符串
+###KVM.isString 判断是否是字符串
 
 
-##KVM.isObject 判断是否是对象，这个对象不包括数组
+###KVM.isObject 判断是否是对象，这个对象不包括数组
 
 
-##KVM.isFunction 判断是否是函数
+###KVM.isFunction 判断是否是函数
 
 
-##KVM.isBoolean 判断是否是布尔值
+###KVM.isBoolean 判断是否是布尔值
 
 
-##KVM.isReference 判断是否是引用类型
+###KVM.isReference 判断是否是引用类型
 
 
-##KVM.isValue 判断是否是值类型
+###KVM.isValue 判断是否是值类型
 
 
-##KVM.isEmpty 判断对象是否为空，可以判断数组也可以判断对象
+###KVM.isEmpty 判断对象是否为空，可以判断数组也可以判断对象
 
 
-##KVM.guid 获取一个唯一的guid值
+###KVM.guid 获取一个唯一的guid值
 
 
-##KVM.unique 对数组去重
+###KVM.unique 对数组去重
 
 
-##KVM.toArray 转换为数组
+###KVM.toArray 转换为数组
 
 
-##KVM.bind 函数上下文绑定
+###KVM.bind 函数上下文绑定
 
 
-##KVM.forEach 遍历，可以遍历数组，也可以遍历对象
+###KVM.forEach 遍历，可以遍历数组，也可以遍历对象
 
 
-##KVM.merge 合并对象，类似jquery的extend,支持深度合并也支持浅合并，深度合并只需要第一个参数设置为true
+###KVM.merge 合并对象，类似jquery的extend,支持深度合并也支持浅合并，深度合并只需要第一个参数设置为true
 
 
-##KVM.copy 复制对象，可以通过回调动态的设置哪些属性浅拷贝，哪些属性深拷贝
+###KVM.copy 复制对象，可以通过回调动态的设置哪些属性浅拷贝，哪些属性深拷贝
 
 
-##KVM.eachTask 异步队列同步运行
+###KVM.eachTask 异步队列同步运行
 
 #默认模块
 
-##$do json数据处理器，操作语法类似于Mongodb，
+###$do json数据处理器，操作语法类似于Mongodb，
 
-##$class 类构造器
+###$class 类构造器
 
-##emitter 事件分发器
+###emitter 事件分发器
