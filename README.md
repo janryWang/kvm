@@ -454,6 +454,8 @@ $do 一个json对象的操作工具，通过传入类似dsl语法命令对象来
 
 $class 类构造器
 
+###API接口
+
 ```
 
 创建一个类 var Person = $class({
@@ -471,6 +473,8 @@ $class.protocol({..methods..});//接口协议定义，该函数返回一个接�
 ```
 
 $emitter 事件分发器
+
+###API接口
 
 ```
 var event = new $emitter(cache/*外部缓存事件队列*/);
