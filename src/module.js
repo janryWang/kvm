@@ -307,6 +307,7 @@ var Injector = function () {
 		return (path + '').indexOf('.') === 0;
 	}
 
+
 	function resolvePath() {
 		var numUrls = arguments.length;
 
@@ -473,15 +474,32 @@ var Injector = function () {
 		});
 	}
 
+	/**
+	 * 支持别名替换
+	 * @param id
+	 * @returns {*}
+	 */
+
+	function replaceAlias(id){
+		var res = id;
+		if(!isString(id)) throw new Error("模块id非字符串类型！");
+		forEach(data.alias,function(val,key){
+			if(id.indexOf(key) !== -1){
+				res = id.replace(new RegExp("\\b"+key+"\\b"),val);
+				return false;
+			}
+		});
+		return res;
+	}
+
 	return {
 		config: function (options) {
 			merge(data,options);
 		},
 		resolve: function (id) {
-			id = data.shims[id] ? (data.shims[id].url || data.shims[id].uri) : data.alias[id] ? data.alias[id] : id;
+			id = data.shims[id] ? (data.shims[id].url || data.shims[id].uri) : replaceAlias(id);
 			return normalize(data.baseUrl, id);
 		},
-
 		data:function(name){
 			return name ? data[name] : data;
 		},
