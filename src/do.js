@@ -1,5 +1,5 @@
 var COMMANDS = {
-	OPERATORS: "$remove,$set,$push,$slice,$concat,$pop,$unshift,$merge,$deep_merge,$find,$sort,$foreach".split(","),
+	OPERATORS: "$remove,$set,$push,$slice,$concat,$pop,$unshift,$merge,$deep_merge,$clone,$find,$sort,$foreach".split(","),
 	FILTERS: "$gt,$lt,$is,$not,$gte,$lte,$icontains,$contains,$in,$not_in,$and,$or".split(","),
 	SORTS: "$desc,$asc".split(","),
 	CLONES: "$white_list,$black_list,$filter,$deep".split(","),

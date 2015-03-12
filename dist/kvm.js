@@ -236,12 +236,21 @@ function crawlObject(obj, callback, isDeep) {
 function merge() {
 	var args,
 		args_length,
-		isDeep;
+		isDeep = false,
+		isCover = true,
+		callback;
 	args = toArray(arguments);
-	isDeep = false;
 	if (isBoolean(args[0])) {
-		isDeep = args[0] === true ? true : false;
+		isDeep = args[0];
 		args = args.slice(1);
+	}
+	if(isFunction(args[args.length - 1])){
+		callback = args[args.length - 1];
+		args.pop();
+	}
+	if(isBoolean(args[args.length - 1])){
+		isCover = args[args.length - 1];
+		args.pop();
 	}
 	args_length = args.length;
 	if (args_length < 2) {
@@ -250,12 +259,24 @@ function merge() {
 	if (args_length === 2) {
 		forEach(args[1],
 			function (item, name) {
+				if(isFunction(callback)) callback(name,args[0],args[1]);
 				if (args[1][name] !== undefined && args[1][name] !== null) {
-					args[0][name] = args[0][name] || args[1][name].constructor();
-					if (isDeep && isReference(item)) {
-						merge(isDeep, args[0][name], item);
+					if(!isCover) {
+						if (!args[0][name]) {
+							args[0][name] = args[0][name] || args[1][name].constructor();
+							if (isDeep && isReference(item)) {
+								merge(isDeep, args[0][name], item,isCover,callback);
+							} else {
+								args[0][name] = item;
+							}
+						}
 					} else {
-						args[0][name] = item;
+						args[0][name] = args[0][name] || args[1][name].constructor();
+						if (isDeep && isReference(item)) {
+							merge(isDeep, args[0][name], item,isCover,callback);
+						} else {
+							args[0][name] = item;
+						}
 					}
 				}
 			});
@@ -467,8 +488,9 @@ var Emitter = Class({
 		return this;
 	}
 });
+
 var COMMANDS = {
-	OPERATORS: "$remove,$set,$push,$slice,$concat,$pop,$unshift,$merge,$deep_merge,$find,$sort,$foreach".split(","),
+	OPERATORS: "$remove,$set,$push,$slice,$concat,$pop,$unshift,$merge,$deep_merge,$clone,$find,$sort,$foreach".split(","),
 	FILTERS: "$gt,$lt,$is,$not,$gte,$lte,$icontains,$contains,$in,$not_in,$and,$or".split(","),
 	SORTS: "$desc,$asc".split(","),
 	CLONES: "$white_list,$black_list,$filter,$deep".split(","),
@@ -962,6 +984,7 @@ Do.exec = function (data, cmds, hook) {
 	});
 	return new Do(data, cmds);
 };
+
 
 /**
  * 类工厂
