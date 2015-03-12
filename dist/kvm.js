@@ -1574,12 +1574,18 @@ var Injector = function () {
 		});
 	}
 
+	/**
+	 * 支持别名替换
+	 * @param id
+	 * @returns {*}
+	 */
+
 	function replaceAlias(id){
 		var res = id;
 		if(!isString(id)) throw new Error("模块id非字符串类型！");
 		forEach(data.alias,function(val,key){
 			if(id.indexOf(key) !== -1){
-				res = id.replace(key,val);
+				res = id.replace(new RegExp("\\b"+key+"\\b"),val);
 				return false;
 			}
 		});
@@ -1648,6 +1654,7 @@ var Injector = function () {
 		}
 	};
 }();
+
 
 Injector.define("$do",function(){
 	return Do;
