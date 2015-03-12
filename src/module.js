@@ -258,7 +258,7 @@ var Injector = function () {
 	var data = {
 		baseUrl:window.location.href,
 		shims:{},
-		prelaods:{},
+		vars:{},
 		alias:{}
 	};
 	/**
@@ -480,16 +480,17 @@ var Injector = function () {
 	 * @returns {*}
 	 */
 
-	function replaceAlias(id){
-		var res = id;
-		if(!isString(id)) throw new Error("模块id非字符串类型！");
-		forEach(data.alias,function(val,key){
-			if(id.indexOf(key) !== -1){
-				res = id.replace(new RegExp("\\b"+key+"\\b"),val);
-				return false;
-			}
+	function tmplate(url){
+		if(!isString(url)) throw new Error('路径类型错误');
+		var reg = /\{([^{}]+)\}/g,res;
+		res = url.replace(reg,function(match,param){
+			return data.vars[param] ? data.vars[param] : param
 		});
-		return res;
+		if(reg.test(res)){
+			return tmp(res);
+		} else {
+			return res;
+		}
 	}
 
 	return {
@@ -497,7 +498,7 @@ var Injector = function () {
 			merge(data,options);
 		},
 		resolve: function (id) {
-			id = data.shims[id] ? (data.shims[id].url || data.shims[id].uri) : replaceAlias(id);
+			id = tmplate(data.shims[id] ? (data.shims[id].url || data.shims[id].uri) : data.alias[id] ? data.alias[id] : id);
 			return normalize(data.baseUrl, id);
 		},
 		data:function(name){
