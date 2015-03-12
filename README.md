@@ -3,10 +3,10 @@
 
 #API接口
 
-###KVM.module
+KVM.module
 
- * KVM.module.define 定义模块
-    这里，全局define也可以定义模块
+ * KVM.module.define 定义模块,这里，全局define也可以定义模块
+    
 ```
     define([dep1,dep2,....],function(dep1,dep2,...){ //定义匿名模块
       
@@ -25,7 +25,9 @@
     define(id,deps,facotry,injectors)
     
 ```
+
  * KVM.module.invoke 调用模块
+ 
 ```
     KVM.module.invoke('{module id}',injectors) //调用模块，可以指定模块路径，injectors是临时注入的依赖，同时它也能依赖其他模块
     KVM.module.invoke([dep1,dep2,...,function(dep1,dep2,...){ //调用匿名模块，通常用于临时将某些依赖合并使用
@@ -39,16 +41,20 @@
     }
     
     invoke调用后返回的结果是一个promise对象，所以通过then可以获得模块的实例
+    
 ```
 
  * KVM.module.use 使用某一模块，功能单一，没有注入依赖的功能
+ 
 ```
     KVM.module.use('id',function(instance){//仅仅只能使用id来调用，不能像invoke一样调用一个匿名工厂
     
     });
+    
 ```
  
  * KVM.module.config 参数配置
+ 
 ```
   KVM.module.config(options);
   
@@ -69,44 +75,47 @@
 ```
  
  * KVM.module.data 返回当前配置
+ 
 ```
   KVM.module.data(name);如果name为空返回所有配置，如果name不为空则返回相应的配置项
+  
 ```
 
-###KVM.isArray 判断是否是数组
+KVM.isArray 判断是否是数组
  
 
-###KVM.isString 判断是否是字符串
+KVM.isString 判断是否是字符串
 
 
-###KVM.isObject 判断是否是对象，这个对象不包括数组
+KVM.isObject 判断是否是对象，这个对象不包括数组
 
 
-###KVM.isFunction 判断是否是函数
+KVM.isFunction 判断是否是函数
 
 
-###KVM.isBoolean 判断是否是布尔值
+KVM.isBoolean 判断是否是布尔值
 
 
-###KVM.isReference 判断是否是引用类型
+KVM.isReference 判断是否是引用类型
 
 
-###KVM.isValue 判断是否是值类型
+KVM.isValue 判断是否是值类型
 
 
-###KVM.isEmpty 判断对象是否为空，可以判断数组也可以判断对象
+KVM.isEmpty 判断对象是否为空，可以判断数组也可以判断对象
 
 
-###KVM.guid 获取一个唯一的guid值
+KVM.guid 获取一个唯一的guid值
 
 
-###KVM.unique 对数组去重
+KVM.unique 对数组去重
 
 
-###KVM.toArray 转换为数组
+KVM.toArray 转换为数组
 
 
-###KVM.bind 函数上下文绑定
+KVM.bind 函数上下文绑定
+
 ```
 var obj = {
     name:"hello world"
@@ -120,7 +129,8 @@ kvm.bind(fun,obj)("janry,");
 
 ```
 
-###KVM.forEach 遍历，可以遍历数组，也可以遍历对象
+KVM.forEach 遍历，可以遍历数组，也可以遍历对象
+
 ```
 kvm.forEach(arr,function(item,key){
 
@@ -130,14 +140,17 @@ kvm.forEach(arr,function(item,key){
 
 ```
 
-###KVM.merge 合并对象，类似jquery的extend,支持深度合并也支持浅合并，深度合并只需要第一个参数设置为true
+KVM.merge 合并对象，类似jquery的extend,支持深度合并也支持浅合并，深度合并只需要第一个参数设置为true
 
 
-###KVM.copy 复制对象，可以通过回调动态的设置哪些属性浅拷贝，哪些属性深拷贝
+KVM.copy 复制对象，可以通过回调动态的设置哪些属性浅拷贝，哪些属性深拷贝
+
 ```
 kvm.copy(isDeep/*可选*/,source/*源对象*/,callback/*筛选回调，参数：item,key,path*/)
+
 如果 callback 返回true，而且设置了isDeep为true，则对于某个属性是深度拷贝，否则是浅拷贝
 ```
-###$class 类构造器
 
-###$emitter 事件分发器
+$class 类构造器
+
+$emitter 事件分发器
