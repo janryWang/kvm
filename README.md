@@ -69,7 +69,8 @@ KVM.module
         }
      },
      alias:{//路径别名，就是为了懒人准备的
-        player:"./modules/Player"//这样映射后每次依赖的时候就不需要每次都使用长长的路径id了
+        mod:"./modules",
+        player:"mod/Player"//这样映射后每次依赖的时候就不需要每次都使用长长的路径id了,同时还支持别名路径的重用
      }
   }
 ```
