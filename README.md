@@ -5,11 +5,21 @@
 
 ##KVM.module
 
- * KVM.module.define
+ * KVM.module.define 定义模块
+    这里，全局define也可以定义模块
+    实例：
+```
+    define([dep1,dep2,....],function(dep1,dep2,...){ //定义匿名模块
 
- * KVM.module.invoke
+    })
+```
+ * KVM.module.invoke 调用模块
 
  * KVM.module.use
+ 
+ * KVM.module.config
+ 
+ * KVM.module.data
 
 ##KVM.isArray
 
