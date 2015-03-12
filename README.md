@@ -136,7 +136,7 @@ kvm.forEach(arr,function(item,key){
 ###KVM.copy 复制对象，可以通过回调动态的设置哪些属性浅拷贝，哪些属性深拷贝
 ```
 kvm.copy(isDeep/*可选*/,source/*源对象*/,callback/*筛选回调，参数：item,key,path*/)
-callback 返回true的而且设置了isDeep为true，则对于某个属性是深度拷贝，否则是浅拷贝
+如果 callback 返回true，而且设置了isDeep为true，则对于某个属性是深度拷贝，否则是浅拷贝
 ```
 ###$class 类构造器
 
