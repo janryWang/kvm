@@ -485,4 +485,6 @@ event.$emit("eventName",param1,param2,....) 触发事件
 
 event.$remove("eventName",callback) 删除事件
 
+
+
 ```
