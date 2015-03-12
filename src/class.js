@@ -7,8 +7,9 @@
  * @constructor
  */
 function Class(proMethods, staMethods) {
-	var _class;
-	if (proMethods && proMethods.constructor && isFunction(proMethods.constructor)) {
+	if (proMethods && proMethods.constructor
+		&& isFunction(proMethods.constructor)
+		&& proMethods.constructor !== Object) {
 		_class = function () {
 			return proMethods.constructor.apply(this, toArray(arguments));
 		};
@@ -16,8 +17,7 @@ function Class(proMethods, staMethods) {
 			return proMethods.constructor.toString();
 		};
 	} else {
-		_class = function () {
-		};
+		_class = function(){};
 	}
 	merge(_class.prototype, proMethods);
 	merge(_class, staMethods);
@@ -80,3 +80,4 @@ Class.protocol = function (Interface) {
 	Interface.$$isprotocol = true;
 	return Class(Interface);
 };
+
