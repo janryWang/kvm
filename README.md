@@ -107,23 +107,37 @@
 
 
 ###KVM.bind 函数上下文绑定
+```
+var obj = {
+    name:"hello world"
+};
+function fun(param){
+    console.log(param+this.name);
+}
+kvm.bind(fun,obj)("janry,");
 
+//output janry,hello world
+
+```
 
 ###KVM.forEach 遍历，可以遍历数组，也可以遍历对象
+```
+kvm.forEach(arr,function(item,key){
 
+},function(){//如果arr的类型不是数组或者数组长度为0会触发该回调
+
+})
+
+```
 
 ###KVM.merge 合并对象，类似jquery的extend,支持深度合并也支持浅合并，深度合并只需要第一个参数设置为true
 
 
 ###KVM.copy 复制对象，可以通过回调动态的设置哪些属性浅拷贝，哪些属性深拷贝
-
-
-###KVM.eachTask 异步队列同步运行
-
-#默认模块
-
-###$do json数据处理器，操作语法类似于Mongodb，
-
+```
+kvm.copy(isDeep/*可选*/,source/*源对象*/,callback/*筛选回调，参数：item,key,path*/)
+callback 返回true的而且设置了isDeep为true，则对于某个属性是深度拷贝，否则是浅拷贝
+```
 ###$class 类构造器
 
-###emitter 事件分发器
+###$emitter 事件分发器
