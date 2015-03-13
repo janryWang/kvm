@@ -1,5 +1,6 @@
 !(function(global){
 
+
 var TYPES = "Function,String,Array,Object,Number,Boolean".split(",");
 var hasOwnProperty = Object.prototype.hasOwnProperty;
 
@@ -1582,4 +1583,6 @@ global.KVM = global.kvm;
 global.kvm.module = Injector;
 global.KVM.Module = Injector;
 global.define = Injector.define;
+global.define.amd = true;
+
 })(window);

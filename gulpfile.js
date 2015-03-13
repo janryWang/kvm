@@ -1,6 +1,7 @@
 var gulp = require('gulp');
 var uglify = require('gulp-uglify');
 var concat = require('gulp-concat');
+var jshint = require('gulp-jshint');
 var clean = require('gulp-clean');
 var rename = require('gulp-rename');
 var header = require('gulp-header');
@@ -19,7 +20,9 @@ var banner = [
 gulp.task('clean-scripts',function(){
 	return gulp.src('dist', {read: false})
 		.pipe(clean());
-}).task('concat',['clean-scripts'],function () {
+});
+
+gulp.task('concat',['clean-scripts'],function () {
 	return gulp.src(['./src/intro.js',
 		'./src/lang.js',
 		'./src/do.js',
@@ -29,8 +32,11 @@ gulp.task('clean-scripts',function(){
 		'./src/kvm.js',
 		'./src/outro.js'])
 		.pipe(concat('kvm.js'))
+		.pipe(jshint())
 		.pipe(gulp.dest('dist'))
-}).task('compress',['concat'], function () {
+});
+
+gulp.task('compress',['concat'], function () {
 	return gulp.src('dist/*.js')
 		.pipe(uglify())
 		.pipe(header(banner, {pkg: pkg}))
@@ -39,4 +45,12 @@ gulp.task('clean-scripts',function(){
 		}))
 		.pipe(gulp.dest('dist'));
 
-}).task('default',['compress']);
+});
+
+gulp.task('watch',function(){
+	gulp.watch('./src/*.js', ['compress']);
+});
+
+gulp.task('default',['watch']);
+
+gulp.task('build',['compress']);
