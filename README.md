@@ -74,7 +74,8 @@ KVM.module
      },
      alias:{//路径别名，就是为了懒人准备的
         player:"{mod}/Player"//这样映射后每次依赖的时候就不需要每次都使用长长的路径id了,同时还支持别名路径的重用,通过使用{}语法来链接vars中的属性
-     }
+     },
+     //需要支持包规范
   }
 ```
  
@@ -144,7 +145,12 @@ kvm.forEach(arr,function(item,key){
 
 ```
 
-KVM.merge 合并对象，类似jquery的extend,支持深度合并也支持浅合并，深度合并只需要第一个参数设置为true
+KVM.merge 合并对象，类似jquery的extend,支持深度合并也支持浅合并
+
+```
+kvm.merge([isDeep/*是否深度合并*/],obj1,obj2,...,[isCover/*是否覆盖属性*/],[callback/*回调，param:name,target,source*/])
+
+```
 
 
 KVM.copy 复制对象，可以通过回调动态的设置哪些属性浅拷贝，哪些属性深拷贝
