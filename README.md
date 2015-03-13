@@ -14,7 +14,7 @@ KVM.module
     define([dep1,dep2,....,function(dep1,dep2,...){ //定义匿名模块,angular风格
       
     }])
-    define(function(dep1,dep2,...){ //定义匿名模块,无依赖
+    define(function(){ //定义匿名模块,无依赖
       
     })
     定义id模块，id就是模块路径
