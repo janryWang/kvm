@@ -165,7 +165,7 @@ var Loader = function () {
 					isFunction(callback) && callback(res[0]);
 				}
 			});
-		},
+		}
 
 	},{
 		//获取一个加载请求
@@ -227,14 +227,13 @@ var Module = Class({
 	}
 });
 
+Class.inherit(Module, Emitter);
+
 /**
  * 模块缓存器
  */
 var ModuleDB = function () {
 	var modules = [];
-
-
-	Class.inherit(Module, Emitter);
 
 	return {
 		add: function (meta) {

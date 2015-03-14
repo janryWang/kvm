@@ -23,31 +23,6 @@ function isReference(val) {
 	return isArray(val) || isObject(val);
 }
 
-/**
- * 判断某对象是否为非引用类型
- * @param val
- * @returns {boolean}
- */
-function isValue(val) {
-	return !isReference(val);
-}
-
-/**
- * 判断数组或对象是否为空
- * @param obj
- * @returns {boolean}
- */
-function isEmpty(obj) {
-	if (obj == null) return true;
-
-	if (obj.length > 0)    return false;
-	if (obj.length === 0)  return true;
-	for (var key in obj) {
-		if (hasOwnProperty.call(obj, key)) return false;
-	}
-
-	return true;
-}
 
 /**
  * 将类似数组的对象转换为数组
@@ -160,104 +135,20 @@ function merge() {
 
 
 
-/**
- * 类工厂
- * @param proMethods 实例方法
- * @param staMethods 静态方法
- * @returns {*}
- * @constructor
- */
-function Class(proMethods, staMethods) {
-	if (proMethods && proMethods.constructor
-		&& isFunction(proMethods.constructor)
-		&& proMethods.constructor !== Object) {
-		_class = function () {
-			return proMethods.constructor.apply(this, toArray(arguments));
-		};
-		_class.toString = function () {
-			return proMethods.constructor.toString();
-		};
-	} else {
-		_class = function(){};
-	}
-	merge(_class.prototype, proMethods);
-	merge(_class, staMethods);
-	return _class;
-}
-
-/**
- * 继承原则，默认是子类会重写父类的方法和属性，子类会继承父类的一切方法和属性
- * 实例化对象可以通过$parent访问父对象，这样访问的父对象的属性方法不会被重写
- */
-Class.inherit = function () {
-	var args = toArray(arguments);
-
-	function construct(constructor, args) {
-		function F() {
-			return constructor.apply(this, args);
-		}
-
-		F.prototype = constructor.prototype;
-		return new F();
-	}
-
-	function _super() {
-		var instance = construct(parentClass, toArray(arguments));//实例化父类
-		merge(this, instance, false);//将父类的实例化对象与当前对象混合
-		this.$super = _super;
-		if (this.$parent && isArray(this.$parent)) {
-			this.$parent.push(instance);
-		} else
-			this.$parent = [instance];
-		return instance;
-	}
-
-	if (args.length == 2) {
-		var childClass = args[0], parentClass = args[1];
-		if (isFunction(childClass) && isFunction(parentClass)) {
-			merge(childClass.prototype, parentClass.prototype, false, function (name, target, source) {//默认是父类方法不能覆盖子类方法
-				if (source.$$isprotocol === true) {
-					if (isFunction(source[name]) && !isFunction(target[name])) {
-						throw "The subclass does not follow protocol";
-					}
-				}
-			});
-			childClass.prototype.$super = _super;
-			childClass.prototype.$parent = parentClass.prototype;
-			childClass.prototype.constructor = childClass;
-		}
-	} else if (args.length > 2) {
-		for (var i = 1; i < args.length; i++) {
-			Class.inherit(args[0], args[i]);
-		}
-	}
-
-};
-
-/**
- * 通过协议来约定接口规范
- */
-Class.protocol = function (Interface) {
-	Interface.$$isprotocol = true;
-	return Class(Interface);
-};
-
-
-
 
 /**
  * 事件分发器
  * @type {*}
  */
+function Emitter(events){
+	if (events) {
+		this.__$$events__ = events;
+	} else {
+		this.__$$events__ = {};
+	}
+}
 
-var Emitter = Class({
-	constructor: function (events) {
-		if (events) {
-			this.__$$events__ = events;
-		} else {
-			this.__$$events__ = {};
-		}
-	},
+merge(Emitter.prototype,{
 	$on: function (eventNames, fn) {
 		var _this = this;
 		eventNames = eventNames.split(",");
@@ -302,64 +193,65 @@ var Emitter = Class({
  */
 var Loader = function () {
 	var loader_stack = [];//栈里会有多个脚本列表，每个列表子集加载完成又会触发一次回调
+	function Request(req_list, callback){
+		var _this = this;
+		var shims = Injector.data('shims');
+		_this.req_list = req_list;
+		_this.loaders = [];
+		_this.results = [];
+		forEach(req_list, function (id) {
+			var loader,cache_module;
+			var uri = Injector.resolve(id);
 
-	var Request = Class({
-		constructor: function (req_list, callback) {
-			var _this = this;
-			var shims = Injector.data('shims');
-			_this.req_list = req_list;
-			_this.loaders = [];
-			_this.results = [];
-			forEach(req_list, function (id) {
-				var loader,cache_module;
-				var uri = Injector.resolve(id);
-
-				forEach(loader_stack, function (_loader) {
-					if (_loader.uri == uri) {
-						loader = _loader;
+			forEach(loader_stack, function (_loader) {
+				if (_loader.uri == uri) {
+					loader = _loader;
+					return false;
+				}
+			});
+			if (!loader && !(cache_module = ModuleDB.get(id,uri))) {//获取一个唯一的loader
+				loader = new ScriptLoader(id,uri,function(){
+					//如果存在shim模块
+					if(shims[id]){
+						Injector.define(id,shims[id].factory);
+					}
+				});
+				loader_stack.push(loader);
+			}
+			if(loader && loader.module){
+				_this.results.push(loader.module);
+				if (_this._checkDone()) {
+					callback(_this.results);
+					_this._destroy();
+					return false;
+				}
+			} else if(cache_module){
+				_this.results.push(cache_module);
+				if (_this._checkDone()) {
+					callback(_this.results);
+					_this._destroy();
+					return false;
+				}
+			} else {
+				_this.loaders.push(loader);
+				loader.$on("loaded", function (module) {
+					loader.module = module;
+					_this.results.push(module);
+					if (_this._checkDone()) {
+						callback(_this.results);
+						_this._destroy();
 						return false;
 					}
 				});
-				if (!loader && !(cache_module = ModuleDB.get(id,uri))) {//获取一个唯一的loader
-					loader = new ScriptLoader(id,uri,function(){
-						//如果存在shim模块
-						if(shims[id]){
-							Injector.define(id,shims[id].factory);
-						}
-					});
-					loader_stack.push(loader);
-				}
-				if(loader && loader.module){
-					_this.results.push(loader.module);
-					if (_this._checkDone()) {
-						callback(_this.results);
-						_this._destroy();
-						return false;
-					}
-				} else if(cache_module){
-					_this.results.push(cache_module);
-					if (_this._checkDone()) {
-						callback(_this.results);
-						_this._destroy();
-						return false;
-					}
-				} else {
-					_this.loaders.push(loader);
-					loader.$on("loaded", function (module) {
-						loader.module = module;
-						_this.results.push(module);
-						if (_this._checkDone()) {
-							callback(_this.results);
-							_this._destroy();
-							return false;
-						}
-					});
-				}
-			});
-			forEach(_this.loaders, function (loader) {
-				loader.load();
-			});
-		},
+			}
+		});
+		forEach(_this.loaders, function (loader) {
+			loader.load();
+		});
+	}
+
+
+	merge(Request.prototype,{
 		_destroy:function(){
 			delete this.results;
 			delete this.loaders;
@@ -370,20 +262,19 @@ var Loader = function () {
 		}
 	});
 
-
-	var ScriptLoader = Class({
-		constructor: function (id,uri,callback) {
-			var _this = this;
-			this.id = id;
-			this.uri = uri;
-			this.callback = callback;
-			this.state = "pendding";
-			this.module = null;
-			this.$super();
-			this.$on("loaded", function () {
-				_this.state = "done";
-			});
-		},
+	function ScriptLoader(id,uri,callback){
+		var _this = this;
+		this.id = id;
+		this.uri = uri;
+		this.callback = callback;
+		this.state = "pendding";
+		this.module = null;
+		merge(this,Emitter.prototype,new Emitter());
+		this.$on("loaded", function () {
+			_this.state = "done";
+		});
+	}
+	merge(ScriptLoader.prototype,{
 		load: function () {
 			this._load(this.uri,this.callback);
 		},
@@ -435,15 +326,10 @@ var Loader = function () {
 			}
 		}
 	});
-
-
-	Class.inherit(ScriptLoader, Emitter);
-
-
-	return Class({
-		constructor:function(module){
-			this.module = module;
-		},
+	function _Loader(module){
+		this.module = module;
+	}
+	merge(_Loader.prototype,{
 		setModule:function(module){
 			this.module = module;
 		},
@@ -455,18 +341,19 @@ var Loader = function () {
 					deps.push(dep_id);
 				}
 			});
-			Loader.fetchList(deps,callback);
+			_Loader.fetchList(deps,callback);
 		},
 		//请求某一模块
 		fetch: function (callback) {
-			Loader.fetchList([this.module.id], function(res){
+			_Loader.fetchList([this.module.id], function(res){
 				if(res && res.length > 0){
 					isFunction(callback) && callback(res[0]);
 				}
 			});
-		},
+		}
+	});
 
-	},{
+	merge(_Loader,{
 		//获取一个加载请求
 		getLoader: function (id,uri,callback) {
 			var uri = uri || Injector.resolve(id);
@@ -500,21 +387,24 @@ var Loader = function () {
 			new Request(list, callback);
 		}
 	});
+
+
+	return _Loader;
 }();
 
-var Module = Class({
-	constructor: function (meta) {
-		merge(this,{
-			id:"",
-			uri:"",
-			dep_ids:[],
-			factory:null,
-			injectors:null
-		},meta);
-		this.$super();
-		this.register();
+function Module(meta){
+	merge(this,{
+		id:"",
+		uri:"",
+		dep_ids:[],
+		factory:null,
+		injectors:null
+	},meta);
+	merge(this,Emitter.prototype,new Emitter());
+	this.register();
+}
 
-	},
+merge(Module.prototype,{
 	register: function () {
 		var _this = this;
 		this.$on("loaded", function () {
@@ -526,14 +416,12 @@ var Module = Class({
 	}
 });
 
+
 /**
  * 模块缓存器
  */
 var ModuleDB = function () {
 	var modules = [];
-
-
-	Class.inherit(Module, Emitter);
 
 	return {
 		add: function (meta) {
@@ -863,9 +751,6 @@ var Injector = function () {
 	};
 }();
 
-Injector.define("$class",function(){
-	return Class;
-});
 Injector.define("$emitter",function(){
 	return Emitter;
 });
@@ -877,8 +762,6 @@ merge(global.kvm,{
 	isObject: isObject,
 	isReference: isReference,
 	isBoolean:isBoolean,
-	isValue: isValue,
-	isEmpty: isEmpty,
 	toArray: toArray,
 	forEach: forEach,
 	merge: merge

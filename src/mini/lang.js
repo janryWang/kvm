@@ -21,31 +21,6 @@ function isReference(val) {
 	return isArray(val) || isObject(val);
 }
 
-/**
- * 判断某对象是否为非引用类型
- * @param val
- * @returns {boolean}
- */
-function isValue(val) {
-	return !isReference(val);
-}
-
-/**
- * 判断数组或对象是否为空
- * @param obj
- * @returns {boolean}
- */
-function isEmpty(obj) {
-	if (obj == null) return true;
-
-	if (obj.length > 0)    return false;
-	if (obj.length === 0)  return true;
-	for (var key in obj) {
-		if (hasOwnProperty.call(obj, key)) return false;
-	}
-
-	return true;
-}
 
 /**
  * 将类似数组的对象转换为数组

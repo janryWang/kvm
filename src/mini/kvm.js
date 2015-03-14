@@ -1,6 +1,3 @@
-Injector.define("$class",function(){
-	return Class;
-});
 Injector.define("$emitter",function(){
 	return Emitter;
 });
@@ -12,8 +9,6 @@ merge(global.kvm,{
 	isObject: isObject,
 	isReference: isReference,
 	isBoolean:isBoolean,
-	isValue: isValue,
-	isEmpty: isEmpty,
 	toArray: toArray,
 	forEach: forEach,
 	merge: merge

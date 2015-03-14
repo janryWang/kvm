@@ -4,15 +4,15 @@
  * 事件分发器
  * @type {*}
  */
+function Emitter(events){
+	if (events) {
+		this.__$$events__ = events;
+	} else {
+		this.__$$events__ = {};
+	}
+}
 
-var Emitter = Class({
-	constructor: function (events) {
-		if (events) {
-			this.__$$events__ = events;
-		} else {
-			this.__$$events__ = {};
-		}
-	},
+merge(Emitter.prototype,{
 	$on: function (eventNames, fn) {
 		var _this = this;
 		eventNames = eventNames.split(",");

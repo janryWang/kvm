@@ -41,7 +41,6 @@ gulp.task('concat-small',['concat-big'],function () {
 	return gulp.src([
 		'./src/mini/intro.js',
 		'./src/mini/lang.js',
-		'./src/mini/class.js',
 		'./src/mini/emitter.js',
 		'./src/mini/module.js',
 		'./src/mini/kvm.js',

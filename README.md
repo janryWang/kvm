@@ -1,5 +1,8 @@
 #KVM.js模块管理器(v0.0.3)
 带给你不一样的模块管理体验
+这里有两个版本，一个是完整版kvm.js，里面有内置模块$do,$class,$emitter
+kvm-mini.js,里面只有$emitter模块，但是非常非常小
+
 
 #API接口
 

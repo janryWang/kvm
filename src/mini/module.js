@@ -3,64 +3,65 @@
  */
 var Loader = function () {
 	var loader_stack = [];//栈里会有多个脚本列表，每个列表子集加载完成又会触发一次回调
+	function Request(req_list, callback){
+		var _this = this;
+		var shims = Injector.data('shims');
+		_this.req_list = req_list;
+		_this.loaders = [];
+		_this.results = [];
+		forEach(req_list, function (id) {
+			var loader,cache_module;
+			var uri = Injector.resolve(id);
 
-	var Request = Class({
-		constructor: function (req_list, callback) {
-			var _this = this;
-			var shims = Injector.data('shims');
-			_this.req_list = req_list;
-			_this.loaders = [];
-			_this.results = [];
-			forEach(req_list, function (id) {
-				var loader,cache_module;
-				var uri = Injector.resolve(id);
-
-				forEach(loader_stack, function (_loader) {
-					if (_loader.uri == uri) {
-						loader = _loader;
+			forEach(loader_stack, function (_loader) {
+				if (_loader.uri == uri) {
+					loader = _loader;
+					return false;
+				}
+			});
+			if (!loader && !(cache_module = ModuleDB.get(id,uri))) {//获取一个唯一的loader
+				loader = new ScriptLoader(id,uri,function(){
+					//如果存在shim模块
+					if(shims[id]){
+						Injector.define(id,shims[id].factory);
+					}
+				});
+				loader_stack.push(loader);
+			}
+			if(loader && loader.module){
+				_this.results.push(loader.module);
+				if (_this._checkDone()) {
+					callback(_this.results);
+					_this._destroy();
+					return false;
+				}
+			} else if(cache_module){
+				_this.results.push(cache_module);
+				if (_this._checkDone()) {
+					callback(_this.results);
+					_this._destroy();
+					return false;
+				}
+			} else {
+				_this.loaders.push(loader);
+				loader.$on("loaded", function (module) {
+					loader.module = module;
+					_this.results.push(module);
+					if (_this._checkDone()) {
+						callback(_this.results);
+						_this._destroy();
 						return false;
 					}
 				});
-				if (!loader && !(cache_module = ModuleDB.get(id,uri))) {//获取一个唯一的loader
-					loader = new ScriptLoader(id,uri,function(){
-						//如果存在shim模块
-						if(shims[id]){
-							Injector.define(id,shims[id].factory);
-						}
-					});
-					loader_stack.push(loader);
-				}
-				if(loader && loader.module){
-					_this.results.push(loader.module);
-					if (_this._checkDone()) {
-						callback(_this.results);
-						_this._destroy();
-						return false;
-					}
-				} else if(cache_module){
-					_this.results.push(cache_module);
-					if (_this._checkDone()) {
-						callback(_this.results);
-						_this._destroy();
-						return false;
-					}
-				} else {
-					_this.loaders.push(loader);
-					loader.$on("loaded", function (module) {
-						loader.module = module;
-						_this.results.push(module);
-						if (_this._checkDone()) {
-							callback(_this.results);
-							_this._destroy();
-							return false;
-						}
-					});
-				}
-			});
-			forEach(_this.loaders, function (loader) {
-				loader.load();
-			});
-		},
+			}
+		});
+		forEach(_this.loaders, function (loader) {
+			loader.load();
+		});
+	}
+
+
+	merge(Request.prototype,{
 		_destroy:function(){
 			delete this.results;
 			delete this.loaders;
@@ -71,20 +72,19 @@ var Loader = function () {
 		}
 	});
 
-
-	var ScriptLoader = Class({
-		constructor: function (id,uri,callback) {
-			var _this = this;
-			this.id = id;
-			this.uri = uri;
-			this.callback = callback;
-			this.state = "pendding";
-			this.module = null;
-			this.$super();
-			this.$on("loaded", function () {
-				_this.state = "done";
-			});
-		},
+	function ScriptLoader(id,uri,callback){
+		var _this = this;
+		this.id = id;
+		this.uri = uri;
+		this.callback = callback;
+		this.state = "pendding";
+		this.module = null;
+		merge(this,Emitter.prototype,new Emitter());
+		this.$on("loaded", function () {
+			_this.state = "done";
+		});
+	}
+	merge(ScriptLoader.prototype,{
 		load: function () {
 			this._load(this.uri,this.callback);
 		},
@@ -136,15 +136,10 @@ var Loader = function () {
 			}
 		}
 	});
-
-
-	Class.inherit(ScriptLoader, Emitter);
-
-
-	return Class({
-		constructor:function(module){
-			this.module = module;
-		},
+	function _Loader(module){
+		this.module = module;
+	}
+	merge(_Loader.prototype,{
 		setModule:function(module){
 			this.module = module;
 		},
@@ -156,18 +151,19 @@ var Loader = function () {
 					deps.push(dep_id);
 				}
 			});
-			Loader.fetchList(deps,callback);
+			_Loader.fetchList(deps,callback);
 		},
 		//请求某一模块
 		fetch: function (callback) {
-			Loader.fetchList([this.module.id], function(res){
+			_Loader.fetchList([this.module.id], function(res){
 				if(res && res.length > 0){
 					isFunction(callback) && callback(res[0]);
 				}
 			});
-		},
+		}
+	});
 
-	},{
+	merge(_Loader,{
 		//获取一个加载请求
 		getLoader: function (id,uri,callback) {
 			var uri = uri || Injector.resolve(id);
@@ -201,21 +197,24 @@ var Loader = function () {
 			new Request(list, callback);
 		}
 	});
+
+
+	return _Loader;
 }();
 
-var Module = Class({
-	constructor: function (meta) {
-		merge(this,{
-			id:"",
-			uri:"",
-			dep_ids:[],
-			factory:null,
-			injectors:null
-		},meta);
-		this.$super();
-		this.register();
+function Module(meta){
+	merge(this,{
+		id:"",
+		uri:"",
+		dep_ids:[],
+		factory:null,
+		injectors:null
+	},meta);
+	merge(this,Emitter.prototype,new Emitter());
+	this.register();
+}
 
-	},
+merge(Module.prototype,{
 	register: function () {
 		var _this = this;
 		this.$on("loaded", function () {
@@ -227,14 +226,12 @@ var Module = Class({
 	}
 });
 
+
 /**
  * 模块缓存器
  */
 var ModuleDB = function () {
 	var modules = [];
-
-
-	Class.inherit(Module, Emitter);
 
 	return {
 		add: function (meta) {
