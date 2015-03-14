@@ -1011,7 +1011,7 @@ var Loader = function () {
 						return false;
 					}
 				});
-				if (!loader) {//获取一个唯一的loader
+				if (!loader && !(cache_module = ModuleDB.get(id,uri))) {//获取一个唯一的loader
 					loader = new ScriptLoader(id,uri,function(){
 						//如果存在shim模块
 						if(shims[id]){
@@ -1020,16 +1020,18 @@ var Loader = function () {
 					});
 					loader_stack.push(loader);
 				}
-				if(loader.module){
+				if(loader && loader.module){
 					_this.results.push(loader.module);
 					if (_this._checkDone()) {
 						callback(_this.results);
+						_this._destroy();
 						return false;
 					}
-				} else if(cache_module = ModuleDB.get(id,uri)){
+				} else if(cache_module){
 					_this.results.push(cache_module);
 					if (_this._checkDone()) {
 						callback(_this.results);
+						_this._destroy();
 						return false;
 					}
 				} else {
@@ -1039,6 +1041,7 @@ var Loader = function () {
 						_this.results.push(module);
 						if (_this._checkDone()) {
 							callback(_this.results);
+							_this._destroy();
 							return false;
 						}
 					});
@@ -1047,6 +1050,11 @@ var Loader = function () {
 			forEach(_this.loaders, function (loader) {
 				loader.load();
 			});
+		},
+		_destroy:function(){
+			delete this.results;
+			delete this.loaders;
+			delete this.req_list;
 		},
 		_checkDone: function () {
 			return this.req_list.length == this.results.length;
