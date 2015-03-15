@@ -131,3 +131,9 @@ function merge() {
 	}
 }
 
+function inherit(subClass,parentClass){
+	subClass.prototype.$super = function (){
+		merge(this,parentClass.apply(this,toArray(arguments)));
+	}
+}
+

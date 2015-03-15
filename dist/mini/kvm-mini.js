@@ -133,6 +133,12 @@ function merge() {
 	}
 }
 
+function inherit(subClass,parentClass){
+	subClass.prototype.$super = function (){
+		merge(this,parentClass.apply(this,toArray(arguments)));
+	}
+}
+
 
 
 
@@ -199,6 +205,16 @@ var Loader = function () {
 		_this.req_list = req_list;
 		_this.loaders = [];
 		_this.results = [];
+
+		function done(module){
+			_this.results.push(module);
+			if (_this._checkDone()) {
+				callback(_this.results);
+				_this._destroy();
+				return false;
+			}
+		}
+
 		forEach(req_list, function (id) {
 			var loader,cache_module;
 			var uri = Injector.resolve(id);
@@ -219,29 +235,14 @@ var Loader = function () {
 				loader_stack.push(loader);
 			}
 			if(loader && loader.module){
-				_this.results.push(loader.module);
-				if (_this._checkDone()) {
-					callback(_this.results);
-					_this._destroy();
-					return false;
-				}
+				return done(loader.module);
 			} else if(cache_module){
-				_this.results.push(cache_module);
-				if (_this._checkDone()) {
-					callback(_this.results);
-					_this._destroy();
-					return false;
-				}
+				return done(cache_module);
 			} else {
 				_this.loaders.push(loader);
 				loader.$on("loaded", function (module) {
 					loader.module = module;
-					_this.results.push(module);
-					if (_this._checkDone()) {
-						callback(_this.results);
-						_this._destroy();
-						return false;
-					}
+					return done(module);
 				});
 			}
 		});
@@ -263,17 +264,15 @@ var Loader = function () {
 	});
 
 	function ScriptLoader(id,uri,callback){
-		var _this = this;
 		this.id = id;
 		this.uri = uri;
 		this.callback = callback;
-		this.state = "pendding";
 		this.module = null;
-		merge(this,Emitter.prototype,new Emitter());
-		this.$on("loaded", function () {
-			_this.state = "done";
-		});
+		this.$super();
 	}
+
+	inherit(ScriptLoader,Emitter);
+
 	merge(ScriptLoader.prototype,{
 		load: function () {
 			this._load(this.uri,this.callback);
@@ -393,28 +392,11 @@ var Loader = function () {
 }();
 
 function Module(meta){
-	merge(this,{
-		id:"",
-		uri:"",
-		dep_ids:[],
-		factory:null,
-		injectors:null
-	},meta);
-	merge(this,Emitter.prototype,new Emitter());
-	this.register();
+	merge(this,meta);
+	this.$super();
 }
 
-merge(Module.prototype,{
-	register: function () {
-		var _this = this;
-		this.$on("loaded", function () {
-			_this.loaded = true;
-		});
-		this.$on("invoked", function () {
-			_this.invoked = true;
-		});
-	}
-});
+inherit(Module,Emitter);
 
 
 /**
@@ -428,7 +410,6 @@ var ModuleDB = function () {
 			var module = new Module(meta);
 			if (!this.get(meta.id, meta.uri)) {
 				modules.push(module);
-				module.$emit("loaded");
 				Loader.getLoader(meta.id,meta.uri,function(loader){
 					loader.$emit('loaded', module);
 				});
@@ -620,7 +601,7 @@ var Injector = function () {
 		is_cache = isBoolean(is_cache) ? is_cache : false;
 
 		function inject(index, instance) {
-			var _ins;
+			var _inst;
 			if (instance) {
 				dep_instances[index] = instance;
 				inst_nums++;
@@ -628,15 +609,14 @@ var Injector = function () {
 			if (inst_nums == module.dep_ids.length) {
 				if (is_cache) {
 					if(!module.instance) {
-						_ins = module.instance = module.factory.apply(null, dep_instances);
+						_inst = module.instance = module.factory.apply(null, dep_instances);
 					} else {
-						_ins = module.instance;
+						_inst = module.instance;
 					}
 				} else {
-					_ins = module.factory.apply(null, dep_instances);
+					_inst = module.factory.apply(null, dep_instances);
 				}
-				module.$emit("invoked");
-				resolve(_ins);
+				resolve(_inst);
 			}
 		}
 		forEach(module.dep_ids, function (id, index) {
