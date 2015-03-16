@@ -26,13 +26,19 @@ KVM.module
     定义注入的依赖
     
     define(id,deps,facotry,injectors)
+
+    injectors的规范：
+        {
+          module_id:[dep1,dep2,dep3,...,fucntion(dep1,dep2,dep3){//这里可以是数组也可以是函数，随便你怎样搞
+
+          }]
+        }
     
 ```
 
  * KVM.module.invoke 调用模块
  
 ```
-
     KVM.module.invoke('{module id}',injectors) //调用模块，可以指定模块路径，injectors是临时注入的依赖，同时它也能依赖其他模块
     KVM.module.invoke([dep1,dep2,...,function(dep1,dep2,...){ //调用匿名模块，通常用于临时将某些依赖合并使用
     

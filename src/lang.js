@@ -351,3 +351,34 @@ function copy() {
 	return res;
 }
 
+
+function inPaths(path, paths, _swap) {
+	var res, _inPath;
+	res = false;
+	_inPath = function(a, b) {
+		var a_l, b_l, index;
+		a_l = a.length;
+		b_l = b.length;
+		index = 0;
+		while (index < b_l) {
+			if (b.charAt(index) !== a.charAt(index)) {
+				return false;
+			}
+			index++;
+		}
+		if (index === b_l) {
+			if (a_l === b_l) {
+				return true;
+			} else if (a_l > b_l && "[.".indexOf(a.charAt(b_l)) > -1) {
+				return true;
+			}
+		}
+	};
+	forEach(paths, function(_path) {
+		res = _swap ? _inPath(_path, path) : _inPath(path, _path);
+		if (res) {
+			return false;
+		}
+	});
+	return res;
+}
