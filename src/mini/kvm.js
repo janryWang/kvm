@@ -17,4 +17,4 @@ global.KVM = global.kvm;
 global.kvm.module = Injector;
 global.KVM.Module = Injector;
 global.define = Injector.define;
-global.define.amd = true;
+//global.define.amd = true;

@@ -1021,6 +1021,7 @@ var Emitter = Class({
 });
 /**
  * 模块加载器
+ * Todo:还未做到完全兼容第三方AMD模块
  */
 var Loader = function () {
 	var loader_stack = [];//栈里会有多个脚本列表，每个列表子集加载完成又会触发一次回调
@@ -1053,24 +1054,37 @@ var Loader = function () {
 					}
 				});
 				if (!loader && !(cache_module = ModuleDB.get(id,uri))) {//获取一个唯一的loader
-					loader = new ScriptLoader(id,uri,function(){
-						//如果存在shim模块
-						if(shims[id]){
-							Injector.define(id,shims[id].factory);
+					if(shims[id]) {
+						try {
+							if(isFunction(shims[id].checkConflict)){
+								shims[id].checkConflict();
+								return done(Injector.define(id, shims[id].factory));
+							} else {
+								throw new Error('fake error');
+							}
+						} catch (e) {
+							loader = new ScriptLoader(id, uri, function () {
+								Injector.define(id, shims[id].factory);
+							});
 						}
-					});
-					loader_stack.push(loader);
+					} else {
+						loader = new ScriptLoader(id, uri);
+					}
+					loader && loader_stack.push(loader);
 				}
-				if(loader && loader.module){
-					return done(loader.module);
-				} else if(cache_module){
+				if(cache_module){
 					return done(cache_module);
-				} else {
-					_this.loaders.push(loader);
-					loader.$on("loaded", function (module) {
-						loader.module = module;
-						return done(module);
-					});
+				}
+				if(loader) {
+					if (loader.module) {
+						return done(loader.module);
+					} else {
+						_this.loaders.push(loader);
+						loader.$on("loaded", function (module) {
+							loader.module = module;
+							return done(module);
+						});
+					}
 				}
 			});
 			forEach(_this.loaders, function (loader) {
@@ -1301,17 +1315,7 @@ var Injector = function () {
 
 	//path处理
 	function normalize(base, id) {
-		if (isUnnormalId(id)) return id;
-		if (isRelativePath(id)) return resolvePath(base, id) + '.js';
-		return id;
-	}
-
-	function isUnnormalId(id) {
-		return (/^https?:|^file:|^\/|\.js$/).test(id);
-	}
-
-	function isRelativePath(path) {
-		return (path + '').indexOf('.') === 0;
+		return resolvePath(base, id.replace(/\.js/,"")) + '.js';
 	}
 
 
@@ -1517,6 +1521,7 @@ var Injector = function () {
 			} else {
 				throw new Error('模块定义不规范');
 			}
+			return tmp_mod;
 		},
 		invoke: function () {
 			var args = toArray(arguments),
@@ -1599,6 +1604,6 @@ global.KVM = global.kvm;
 global.kvm.module = Injector;
 global.KVM.Module = Injector;
 global.define = Injector.define;
-global.define.amd = true;
+//global.define.amd = true;
 
 })(window);

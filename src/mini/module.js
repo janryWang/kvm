@@ -30,24 +30,37 @@ var Loader = function () {
 				}
 			});
 			if (!loader && !(cache_module = ModuleDB.get(id,uri))) {//获取一个唯一的loader
-				loader = new ScriptLoader(id,uri,function(){
-					//如果存在shim模块
-					if(shims[id]){
-						Injector.define(id,shims[id].factory);
+				if(shims[id]) {
+					try {
+						if(isFunction(shims[id].checkConflict)){
+							shims[id].checkConflict();
+							return done(Injector.define(id, shims[id].factory));
+						} else {
+							throw new Error('fake error');
+						}
+					} catch (e) {
+						loader = new ScriptLoader(id, uri, function () {
+							Injector.define(id, shims[id].factory);
+						});
 					}
-				});
-				loader_stack.push(loader);
+				} else {
+					loader = new ScriptLoader(id, uri);
+				}
+				loader && loader_stack.push(loader);
 			}
-			if(loader && loader.module){
-				return done(loader.module);
-			} else if(cache_module){
+			if(cache_module){
 				return done(cache_module);
-			} else {
-				_this.loaders.push(loader);
-				loader.$on("loaded", function (module) {
-					loader.module = module;
-					return done(module);
-				});
+			}
+			if(loader) {
+				if (loader.module) {
+					return done(loader.module);
+				} else {
+					_this.loaders.push(loader);
+					loader.$on("loaded", function (module) {
+						loader.module = module;
+						return done(module);
+					});
+				}
 			}
 		});
 		forEach(_this.loaders, function (loader) {
@@ -274,17 +287,7 @@ var Injector = function () {
 
 	//path处理
 	function normalize(base, id) {
-		if (isUnnormalId(id)) return id;
-		if (isRelativePath(id)) return resolvePath(base, id) + '.js';
-		return id;
-	}
-
-	function isUnnormalId(id) {
-		return (/^https?:|^file:|^\/|\.js$/).test(id);
-	}
-
-	function isRelativePath(path) {
-		return (path + '').indexOf('.') === 0;
+		return resolvePath(base, id.replace(/\.js/,"")) + '.js';
 	}
 
 
