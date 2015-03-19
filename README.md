@@ -1,7 +1,5 @@
 <img src="https://raw.githubusercontent.com/janryWang/kvm/master/logo.png" width="499" height="260" alt="KVM.js 模块管理器(v0.0.3)">
 
-===
-
 KVM.js 模块管理器(v0.0.3),带给你不一样的模块管理体验
 
 支持AMD规范，支持依赖注入，支持插件式加载脚本
@@ -24,8 +22,6 @@ KVM.js 模块管理器(v0.0.3),带给你不一样的模块管理体验
 * 如果shim模块本身已经是支持amd规范了，需要给出用户提示
 
 * 支持包管理
-
-
 
 
 #API接口
