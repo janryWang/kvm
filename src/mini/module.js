@@ -33,7 +33,9 @@ var Loader = function () {
 				if(shims[id]) {
 					try {
 						if(isFunction(shims[id].checkConflict)){
-							shims[id].checkConflict();
+							if(shims[id].checkConflict() === false){
+								throw new Error('fake error');
+							}
 							return done(Injector.define(id, shims[id].factory));
 						} else {
 							throw new Error('fake error');

@@ -1021,7 +1021,7 @@ var Emitter = Class({
 });
 /**
  * 模块加载器
- * Todo:还未做到完全兼容第三方AMD模块
+ * Todo:还未做到完全兼容第三方AMD模块,还有一个问题就是，如果shim的模块本身是支持amd的，则需要给出用户提示,同时需要支持包路径管理
  */
 var Loader = function () {
 	var loader_stack = [];//栈里会有多个脚本列表，每个列表子集加载完成又会触发一次回调
@@ -1057,7 +1057,9 @@ var Loader = function () {
 					if(shims[id]) {
 						try {
 							if(isFunction(shims[id].checkConflict)){
-								shims[id].checkConflict();
+								if(shims[id].checkConflict() === false){
+									throw new Error('fake error');
+								}
 								return done(Injector.define(id, shims[id].factory));
 							} else {
 								throw new Error('fake error');
