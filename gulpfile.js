@@ -22,7 +22,7 @@ gulp.task('clean-scripts',function(){
 		.pipe(clean());
 });
 
-gulp.task('concat-big',['clean-scripts'],function () {
+gulp.task('concat',['clean-scripts'],function () {
 	return gulp.src([
 		'./src/intro.js',
 		'./src/lang.js',
@@ -37,20 +37,8 @@ gulp.task('concat-big',['clean-scripts'],function () {
 		.pipe(gulp.dest('dist'))
 });
 
-gulp.task('concat-small',['concat-big'],function () {
-	return gulp.src([
-		'./src/mini/intro.js',
-		'./src/mini/lang.js',
-		'./src/mini/emitter.js',
-		'./src/mini/module.js',
-		'./src/mini/kvm.js',
-		'./src/mini/outro.js'])
-		.pipe(concat('kvm-mini.js'))
-		.pipe(jshint())
-		.pipe(gulp.dest('dist/mini'))
-});
 
-gulp.task('compress',['concat-small'], function () {
+gulp.task('compress',['concat'], function () {
 	return gulp.src('dist/**/*.js')
 		.pipe(uglify())
 		.pipe(header(banner, {pkg: pkg}))

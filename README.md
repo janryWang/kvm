@@ -1,6 +1,6 @@
 <img src="https://raw.githubusercontent.com/janryWang/kvm/master/logo.png" width="499" height="260" alt="KVM.js 模块管理器(v0.0.3)">
 
-KVM.js 模块管理器(v0.0.3),带给你不一样的模块管理体验
+KVM.js 模块管理器(v0.1.0),带给你不一样的模块管理体验
 
 支持AMD规范，支持依赖注入，支持插件式加载脚本
 
@@ -9,19 +9,12 @@ KVM.js 模块管理器(v0.0.3),带给你不一样的模块管理体验
 >使得该加载器更加智能化
 
 
-这里有两个版本
-
- * kvm.js(完整版)，里面有内置模块$do,$class,$emitter
-
- * kvm-mini.js(缩减版),里面只有$emitter模块，但是非常非常小
  
-该框架目前还存在几个已知的问题还未解决：
-
-* 还未做到完全兼容第三方AMD模块，比如AMD中使用的是exports来暴露接口，这还没支持
-
-* 如果shim模块本身已经是支持amd规范了，需要给出用户提示
-
-* 支持包管理
+#更新日志
+* 已做添加包管理机制
+* 已添加cmd规范支持
+* 性能提升，实测为requirejs的2倍多
+* 因为维护时间有限，已经放弃mini版本的维护，非常抱歉.
 
 
 #API接口
@@ -39,6 +32,19 @@ KVM.module
     }])
     define(function(){ //定义匿名模块,无依赖
       
+    })
+    define(["require","exports","module"],function(require,exports,module){//commonjs风格
+        var depA = require("depA");
+
+        module.exports = function(){
+           return depA.fun();
+        };
+
+        or
+
+        exports.fun = function(){
+            return depA.fun();
+        };
     })
     定义id模块，id就是模块路径
     define(id,后面的和匿名定义模块一样)
@@ -108,6 +114,11 @@ KVM.module
      },
      alias:{//路径别名，就是为了懒人准备的
         player:"{mod}/Player"//这样映射后每次依赖的时候就不需要每次都使用长长的路径id了,同时还支持别名路径的重用,通过使用{}语法来链接vars中的属性
+     },
+     packages:{//包管理机制
+        packageName:{
+            url:""//包路径
+        }
      }
   }
 ```

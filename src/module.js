@@ -1,9 +1,8 @@
 /**
  * 模块加载器
- * Todo:还未做到完全兼容第三方AMD模块,还有一个问题就是，如果shim的模块本身是支持amd的，则需要给出用户提示,同时需要支持包路径管理
  */
 var Loader = function () {
-	var loader_stack = [];//栈里会有多个脚本列表，每个列表子集加载完成又会触发一次回调
+	var loader_stack = {};
 
 	var Request = Class({
 		constructor: function (req_list, callback) {
@@ -25,13 +24,9 @@ var Loader = function () {
 			forEach(req_list, function (id) {
 				var loader,cache_module;
 				var uri = Injector.resolve(id);
-
-				forEach(loader_stack, function (_loader) {
-					if (_loader.uri == uri) {
-						loader = _loader;
-						return false;
-					}
-				});
+				if(loader_stack[uri]){
+					loader = loader_stack[uri];
+				}
 				if (!loader && !(cache_module = ModuleDB.get(id,uri))) {//获取一个唯一的loader
 					if(shims[id]) {
 						try {
@@ -39,10 +34,19 @@ var Loader = function () {
 								if(shims[id].checkConflict() === false){
 									throw new Error('fake error');
 								}
-								return done(Injector.define(id, shims[id].factory));
 							} else {
-								throw new Error('fake error');
+								if(!shims[id].factory && shims[id].exports){
+									shims[id].factory = function () {
+										return global[shims[id].exports];
+									};
+									if(!global[shims[id].exports]) {
+										throw new Error('fake error');
+									}
+								} else {
+									throw new Error('fake error');
+								}
 							}
+							return done(Injector.define(id, shims[id].factory));
 						} catch (e) {
 							loader = new ScriptLoader(id, uri, function () {
 								Injector.define(id, shims[id].factory);
@@ -51,7 +55,7 @@ var Loader = function () {
 					} else {
 						loader = new ScriptLoader(id, uri);
 					}
-					loader && loader_stack.push(loader);
+					loader && (loader_stack[loader.uri] = loader);
 				}
 				if(cache_module){
 					return done(cache_module);
@@ -130,7 +134,7 @@ var Loader = function () {
 					node.onload = node.onerror = node.onreadystatechange = null;
 
 					// Remove the script to reduce memory leak
-					if (!Injector.debug) {
+					if (!Injector.data("debug")) {
 						head.removeChild(node);
 					}
 
@@ -180,12 +184,9 @@ var Loader = function () {
 			if(!uri){
 				throw new Error('资源未标识');
 			}
-			forEach(loader_stack, function (loader) {
-				if (loader.uri && loader.uri == uri || loader.id && loader.id == id) {
-					callback(loader);
-					return false;
-				}
-			});
+			if(loader_stack[uri]){
+				callback(loader_stack[uri]);
+			}
 		},
 		//请求模块列表
 		fetchList: function () {
@@ -216,10 +217,209 @@ var Module = Class({
 			uri:"",
 			dep_ids:[],
 			factory:null,
-			injectors:null
+			injectors:{},
+			installed:false,
+			module:{
+				exports:{}
+			}
 		},meta);
 		this.$super();
-
+		this.injectExports();
+		this.collectDeps();
+	},
+	injectExports:function(){
+		var _this = this;
+		this.injectors.exports = function(){
+			return _this.module.exports;
+		};
+		this.injectors.module = function(){
+			return _this.module;
+		};
+		this.injectors.require = function(){
+			return function(id){
+				var uri = Injector.resolve(id);
+				var module = ModuleDB.get(id,uri);
+				return module.module.exports;
+			}
+		};
+	},
+	collectDeps:function(){
+		if(isFunction(this.factory)) {
+			this.dep_ids = unique(this.dep_ids.concat(this.parseDependencies(this.factory.toString())));
+		}
+	},
+	parseDependencies:function (s) {
+		if(s.indexOf('require') == -1) {
+			return [];
+		}
+		var index = 0, peek, length = s.length, isReg = 1, modName = 0, parentheseState = 0, parentheseStack = [], res = [];
+		while(index < length) {
+			readch();
+			if(isBlank()) {
+			}
+			else if(isQuote()) {
+				dealQuote();
+				isReg = 1
+			}
+			else if(peek == '/') {
+				readch();
+				if(peek == '/') {
+					index = s.indexOf('\n', index);
+					if(index == -1) {
+						index = s.length;
+					}
+				}
+				else if(peek == '*') {
+					index = s.indexOf('*/', index);
+					if(index == -1) {
+						index = length;
+					}
+					else {
+						index += 2;
+					}
+				}
+				else if(isReg) {
+					dealReg();
+					isReg = 0
+				}
+				else {
+					index--;
+					isReg = 1;
+				}
+			}
+			else if(isWord()) {
+				dealWord();
+			}
+			else if(isNumber()) {
+				dealNumber();
+			}
+			else if(peek == '(') {
+				parentheseStack.push(parentheseState);
+				isReg = 1
+			}
+			else if(peek == ')') {
+				isReg = parentheseStack.pop();
+			}
+			else {
+				isReg = peek != ']';
+				modName = 0
+			}
+		}
+		return res;
+		function readch() {
+			peek = s.charAt(index++);
+		}
+		function isBlank() {
+			return /\s/.test(peek);
+		}
+		function isQuote() {
+			return peek == '"' || peek == "'";
+		}
+		function dealQuote() {
+			var start = index;
+			var c = peek;
+			var end = s.indexOf(c, start);
+			if(end == -1) {
+				index = length;
+			}
+			else if(s.charAt(end - 1) != '\\') {
+				index = end + 1;
+			}
+			else {
+				while(index < length) {
+					readch();
+					if(peek == '\\') {
+						index++;
+					}
+					else if(peek == c) {
+						break;
+					}
+				}
+			}
+			if(modName) {
+				res.push(s.slice(start, index - 1));
+				modName = 0;
+			}
+		}
+		function dealReg() {
+			index--;
+			while(index < length) {
+				readch();
+				if(peek == '\\') {
+					index++
+				}
+				else if(peek == '/') {
+					break
+				}
+				else if(peek == '[') {
+					while(index < length) {
+						readch();
+						if(peek == '\\') {
+							index++;
+						}
+						else if(peek == ']') {
+							break;
+						}
+					}
+				}
+			}
+		}
+		function isWord() {
+			return /[a-z_$]/i.test(peek);
+		}
+		function dealWord() {
+			var s2 = s.slice(index - 1);
+			var r = /^[\w$]+/.exec(s2)[0];
+			parentheseState = {
+				'if': 1,
+				'for': 1,
+				'while': 1,
+				'with': 1
+			}[r];
+			isReg = {
+				'break': 1,
+				'case': 1,
+				'continue': 1,
+				'debugger': 1,
+				'delete': 1,
+				'do': 1,
+				'else': 1,
+				'false': 1,
+				'if': 1,
+				'in': 1,
+				'instanceof': 1,
+				'return': 1,
+				'typeof': 1,
+				'void': 1
+			}[r];
+			modName = /^require\s*\(\s*(['"]).+?\1\s*\)/.test(s2);
+			if(modName) {
+				r = /^require\s*\(\s*['"]/.exec(s2)[0];
+				index += r.length - 2;
+			}
+			else {
+				index += /^[\w$]+(?:\s*\.\s*[\w$]+)*/.exec(s2)[0].length - 1;
+			}
+		}
+		function isNumber() {
+			return /\d/.test(peek)
+				|| peek == '.' && /\d/.test(s.charAt(index));
+		}
+		function dealNumber() {
+			var s2 = s.slice(index - 1);
+			var r;
+			if(peek == '.') {
+				r = /^\.\d+(?:E[+-]?\d*)?\s*/i.exec(s2)[0];
+			}
+			else if(/^0x[\da-f]*/i.test(s2)) {
+				r = /^0x[\da-f]*\s*/i.exec(s2)[0];
+			}
+			else {
+				r = /^\d+\.?\d*(?:E[+-]?\d*)?\s*/i.exec(s2)[0];
+			}
+			index += r.length - 1;
+			isReg = 0;
+		}
 	}
 });
 
@@ -229,28 +429,19 @@ Class.inherit(Module, Emitter);
  * 模块缓存器
  */
 var ModuleDB = function () {
-	var modules = [];
-
+	var modules = {};
 	return {
-		add: function (meta) {
-			var module = new Module(meta);
-			if (!this.get(meta.id, meta.uri)) {
-				modules.push(module);
-				Loader.getLoader(meta.id,meta.uri,function(loader){
+		add: function (module) {
+			if (!this.get(module.id, module.uri)) {
+				modules[module.id || module.uri] = module;
+				Loader.getLoader(module.id,module.uri,function(loader){
 					loader.$emit('loaded', module);
 				});
 			}
 			return this;
 		},
 		get: function (id, uri) {
-			var module;
-			forEach(modules, function (mod) {
-				if ((mod.id && id && mod.id == id) || (mod.uri && uri && mod.uri == uri)) {
-					module = mod;
-					return false;
-				}
-			});
-			return module;
+			return modules[id] || modules[uri];
 		}
 	}
 }();
@@ -261,6 +452,7 @@ var Injector = function () {
 		baseUrl:window.location.href,
 		shims:{},
 		vars:{},
+		packages:{},
 		alias:{}
 	};
 	/**
@@ -367,7 +559,7 @@ var Injector = function () {
 			uri = "",
 			dep_ids = [],
 			factory,
-			injectors=null,
+			injectors={},
 			auto_get_uri = true;
 		if (isBoolean(params[0])) {
 			auto_get_uri = params[0];
@@ -409,13 +601,10 @@ var Injector = function () {
 	 * @param resolve
 	 * @param module
 	 * @param dep_mods
-	 * @param is_cache
 	 * @private
 	 */
-	function _invoke(resolve, module, dep_mods, is_cache) {
+	function _invoke(resolve, module, dep_mods) {
 		var dep_instances = [], inst_nums = 0;
-		is_cache = isBoolean(is_cache) ? is_cache : false;
-
 		function inject(index, instance) {
 			var _inst;
 			if (instance) {
@@ -423,21 +612,22 @@ var Injector = function () {
 				inst_nums++;
 			}
 			if (inst_nums == module.dep_ids.length) {
-				if (is_cache) {
-					if(!module.instance) {
-						_inst = module.instance = module.factory.apply(null, dep_instances);
+				if(!module.installed) {
+					if(module.dep_ids.indexOf('module') != -1 || module.dep_ids.indexOf('exports') != -1){
+						module.factory.apply(null, dep_instances);
+						_inst = module.module.exports;
 					} else {
-						_inst = module.instance;
+						_inst = module.module.exports = module.factory.apply(null, dep_instances) || {};
 					}
+					module.installed = true;
 				} else {
-					_inst = module.factory.apply(null, dep_instances);
+					_inst = module.module.exports;
 				}
 				resolve(_inst);
 			}
 		}
 		forEach(module.dep_ids, function (id, index) {
 			if (module.injectors && module.injectors[id]) {//包装注入优先
-
 				Injector.invoke(module.injectors[id]).then(function (instance) {//获取某个依赖的实例
 					inject(index, instance);
 				}).catch(function(e){
@@ -447,8 +637,8 @@ var Injector = function () {
 			} else {
 				forEach(dep_mods, function (dep) {//遍历依赖模块，调用依赖，按顺序注入
 					if (dep.id && dep.id == id || dep.uri && dep.uri == Injector.resolve(id)) {//寻找依赖模块
-						if (dep.instance && is_cache) {
-							inject(index, dep.instance);
+						if (dep.installed) {
+							inject(index, dep.module.exports);
 						}
 						Injector.invoke(id).then(function (instance) {
 							inject(index, instance);
@@ -471,26 +661,61 @@ var Injector = function () {
 	 * @returns {*}
 	 */
 
-	function tmplate(url){
+	function template(url){
 		if(!isString(url)) throw new Error('路径类型错误');
 		var reg = /\{([^{}]+)\}/g,res;
 		res = url.replace(reg,function(match,param){
 			return data.vars[param] ? data.vars[param] : param
 		});
 		if(reg.test(res)){
-			return tmp(res);
+			return template(res);
 		} else {
 			return res;
 		}
 	}
+
+	function addSl(url){
+		return url.replace(/\/$/,"")+"/";
+	}
+
+	function alias2shim(id){
+		id = data.shims[id] ? (data.shims[id].url || data.shims[id].uri) : data.alias[id] ? data.alias[id] : id;
+		id = template(id);
+		id = data.shims[id] ? (data.shims[id].url || data.shims[id].uri) : id;
+		return id;
+	}
+
+	/**
+	 * 支持包管理
+	 */
+
+	function getPackage(id){
+		var name,index;
+		index = id.indexOf("/");
+		name = id.substr(0,index);
+
+		if(data.packages && data.packages[name]){
+			return {
+				name:addSl(data.packages[name].url || data.packages[name].uri || ""),
+				path:id.substr(index+1)
+			};
+		}
+		return {
+			name:"",
+			path:id
+		};
+	}
+
 
 	return {
 		config: function (options) {
 			merge(data,options);
 		},
 		resolve: function (id) {
-			id = tmplate(data.shims[id] ? (data.shims[id].url || data.shims[id].uri) : data.alias[id] ? data.alias[id] : id);
-			return normalize(data.baseUrl, id);
+			var pack;
+			id = alias2shim(id);
+			pack = getPackage(id);
+			return normalize(pack.name || data.baseUrl, pack.path);
 		},
 		data:function(name){
 			return name ? data[name] : data;
@@ -505,10 +730,8 @@ var Injector = function () {
 			return tmp_mod;
 		},
 		invoke: function () {
-			var args = toArray(arguments),
-				tmp_mod,loader;
-			args.unshift(false);
-			tmp_mod = _parseModule.apply(null, args);
+			var loader,
+				tmp_mod = _parseModule.apply(null, toArray(arguments));
 			loader = new Loader(tmp_mod);
 			return new Promise(function (resolve) {
 				if (tmp_mod.id && !tmp_mod.factory) {//调用远程模块
@@ -517,7 +740,7 @@ var Injector = function () {
 						loader.setModule(module);
 						if(module.dep_ids.length > 0) {
 							loader.fetchDeps(function (dep_mods) {
-								_invoke(resolve, module, dep_mods, true);
+								_invoke(resolve, module, dep_mods);
 							});
 						} else {
 							_invoke(resolve, module, []);
