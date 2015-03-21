@@ -1,0 +1,19 @@
+{
+  "name": "kvm.js",
+  "version": "0.1.0",
+  "homepage": "https://github.com/janryWang/kvm",
+  "authors": [
+    "白玄 <zhili.wzl@alibaba-inc.com>"
+  ],
+  "description": "一款兼容AMD,AMD,angular模块规范同时支持依赖注入的模块管理器",
+  "main": "./dist/kvm.min.js",
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "app/bower_components",
+    "test",
+    "tests"
+  ]
+}

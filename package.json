@@ -1,13 +1,14 @@
 {
   "name": "kvm.js",
   "version": "0.1.0",
-  "description": "一款兼容AMD,angular模块规范同时支持依赖注入的模块管理器",
+  "description": "一款兼容AMD,AMD,angular模块规范同时支持依赖注入的模块管理器",
   "keywords": [
     "模块管理器",
     "依赖注入",
     "module",
     "angular.js",
     "AMD",
+    "CMD",
     "reuqire.js",
     "Injector"
   ],
