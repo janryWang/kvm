@@ -1055,17 +1055,16 @@ var Loader = function () {
 								if(shims[id].checkConflict() === false){
 									throw new Error('fake error');
 								}
-							} else {
-								if(!shims[id].factory && shims[id].exports){
-									shims[id].factory = function () {
-										return global[shims[id].exports];
-									};
-									if(!global[shims[id].exports]) {
-										throw new Error('fake error');
-									}
-								} else {
+							}
+							if(!shims[id].factory && shims[id].exports){
+								shims[id].factory = function () {
+									return global[shims[id].exports];
+								};
+								if(!global[shims[id].exports]) {
 									throw new Error('fake error');
 								}
+							} else {
+								throw new Error('fake error');
 							}
 							return done(Injector.define(id, shims[id].factory));
 						} catch (e) {

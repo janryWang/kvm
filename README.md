@@ -12,7 +12,6 @@ KVM.js 模块管理器(v0.1.0),带给你不一样的模块管理体验
 
 ```
 bower install kvm
-
 ```
 
  
@@ -115,7 +114,8 @@ KVM.module
            },
            facotry:[deps,function(){//这里定义facotry可以是数组也可以是函数，随便你怎样搞
               return angular
-           }]
+           }],
+           exports:"$"//该字段针对于注入到全局作用域的第三方组件的组件名，可以用其替代factory，也能自动检测冲突，比如该例子，如果$存在于全局域中，系统就不会再请求脚本了
         }
      },
      vars:{
