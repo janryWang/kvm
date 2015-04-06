@@ -1,771 +1,629 @@
 /**
- * 模块加载器
+ * 模块管理系统
  */
-var Loader = function () {
-	var loader_stack = {};
 
-	var Request = Class({
-		constructor: function (req_list, callback) {
-			var _this = this;
-			var shims = Injector.data('shims');
-			_this.req_list = req_list;
-			_this.loaders = [];
-			_this.results = [];
+var Manager = (function () {
 
-			function done(module){
-				_this.results.push(module);
-				if (_this._checkDone()) {
-					callback(_this.results);
-					_this._destroy();
-					return false;
-				}
-			}
+	var Hook = new Emitter();
 
-			forEach(req_list, function (id) {
-				var loader,cache_module;
-				var uri = Injector.resolve(id);
-				if(loader_stack[uri]){
-					loader = loader_stack[uri];
-				}
-				if (!loader && !(cache_module = ModuleDB.get(id,uri))) {//获取一个唯一的loader
-					if(shims[id]) {
-						try {
-							if(isFunction(shims[id].checkConflict)){
-								if(shims[id].checkConflict() === false){
-									throw new Error('fake error');
-								}
-							}
-							if(!shims[id].factory && shims[id].exports){
-								shims[id].factory = function () {
-									return global[shims[id].exports];
-								};
-								if(!global[shims[id].exports]) {
-									throw new Error('fake error');
-								}
-							} else {
-								throw new Error('fake error');
-							}
-							return done(Injector.define(id, shims[id].factory));
-						} catch (e) {
-							loader = new ScriptLoader(id, uri, function () {
-								Injector.define(id, shims[id].factory);
-							});
-						}
-					} else {
-						loader = new ScriptLoader(id, uri);
-					}
-					loader && (loader_stack[loader.uri] = loader);
-				}
-				if(cache_module){
-					return done(cache_module);
-				}
-				if(loader) {
-					if (loader.module) {
-						return done(loader.module);
-					} else {
-						_this.loaders.push(loader);
-						loader.$on("loaded", function (module) {
-							loader.module = module;
-							return done(module);
-						});
-					}
-				}
-			});
-			forEach(_this.loaders, function (loader) {
-				loader.load();
-			});
-		},
-		_destroy:function(){
-			delete this.results;
-			delete this.loaders;
-			delete this.req_list;
-		},
-		_checkDone: function () {
-			return this.req_list.length == this.results.length;
-		}
-	});
-
-
-	var ScriptLoader = Class({
-		constructor: function (id,uri,callback) {
-			this.id = id;
-			this.uri = uri;
-			this.callback = callback;
-			this.module = null;
-			this.$super();
-		},
-		load: function () {
-			this._load(this.uri,this.callback);
-		},
-		//加载脚本
-		_load: function (url, callback) {
-			var doc = document;
-			var head = doc.head || doc.getElementsByTagName("head")[0] || doc.documentElement;
-			var baseElement = head.getElementsByTagName("base")[0];
-			var node = doc.createElement("script");
-			node.async = true;
-			node.src = url;
-			addOnload(node, callback);
-
-			baseElement ?
-				head.insertBefore(node, baseElement) :
-				head.appendChild(node);
-
-			function addOnload(node, callback) {
-				var supportOnload = "onload" in node;
-
-				if (supportOnload) {
-					node.onload = onload;
-					node.onerror = function () {
-						onload(true)
-					}
-				}
-				else {
-					node.onreadystatechange = function () {
-						if (/loaded|complete/.test(node.readyState)) {
-							onload()
-						}
-					}
-				}
-
-				function onload(e) {
-					// Ensure only run once and handle memory leak in IE
-					node.onload = node.onerror = node.onreadystatechange = null;
-
-					// Remove the script to reduce memory leak
-					if (!Injector.data("debug")) {
-						head.removeChild(node);
-					}
-
-					// Dereference the node
-					node = null;
-
-					callback && callback(e);
-				}
-			}
-		}
-	});
-
-
-	Class.inherit(ScriptLoader, Emitter);
-
-
-	return Class({
-		constructor:function(module){
-			this.module = module;
-		},
-		setModule:function(module){
-			this.module = module;
-		},
-		//请求模块列表
-		fetchDeps: function (callback) {
-			var deps = [],_this = this;
-			forEach(this.module.dep_ids,function(dep_id){
-				if(!(_this.module.injectors && _this.module.injectors[dep_id])){
-					deps.push(dep_id);
-				}
-			});
-			Loader.fetchList(deps,callback);
-		},
-		//请求某一模块
-		fetch: function (callback) {
-			Loader.fetchList([this.module.id], function(res){
-				if(res && res.length > 0){
-					isFunction(callback) && callback(res[0]);
-				}
-			});
-		}
-
-	},{
-		//获取一个加载请求
-		getLoader: function (id,uri,callback) {
-			var uri = uri || Injector.resolve(id);
-			if(!uri){
-				throw new Error('资源未标识');
-			}
-			if(loader_stack[uri]){
-				callback(loader_stack[uri]);
-			}
-		},
-		//请求模块列表
-		fetchList: function () {
-			var list = [];
-			var args = toArray(arguments);
-			var callback = args[args.length - 1];
-			if (!isFunction(callback)) {
-				return;
-			}
-			args = args.slice(0, args.length-1);
-			//生成请求列表
-			forEach(args, function (param) {
-				if (isArray(param)) {
-					list = list.concat(param);
-				} else {
-					list.push(param);
-				}
-			});
-			new Request(list, callback);
-		}
-	});
-}();
-
-var Module = Class({
-	constructor: function (meta) {
-		merge(this,{
-			id:"",
-			uri:"",
-			dep_ids:[],
-			factory:null,
-			injectors:{},
-			installed:false,
-			module:{
-				exports:{}
-			}
-		},meta);
-		this.$super();
-		this.injectExports();
-		this.collectDeps();
-	},
-	injectExports:function(){
-		var _this = this;
-		this.injectors.exports = function(){
-			return _this.module.exports;
-		};
-		this.injectors.module = function(){
-			return _this.module;
-		};
-		this.injectors.require = function(){
-			return function(id){
-				var uri = Injector.resolve(id);
-				var module = ModuleDB.get(id,uri);
-				return module.module.exports;
-			}
-		};
-	},
-	collectDeps:function(){
-		if(isFunction(this.factory)) {
-			this.dep_ids = unique(this.dep_ids.concat(this.parseDependencies(this.factory.toString())));
-		}
-	},
-	parseDependencies:function (s) {
-		if(s.indexOf('require') == -1) {
-			return [];
-		}
-		var index = 0, peek, length = s.length, isReg = 1, modName = 0, parentheseState = 0, parentheseStack = [], res = [];
-		while(index < length) {
-			readch();
-			if(isBlank()) {
-			}
-			else if(isQuote()) {
-				dealQuote();
-				isReg = 1
-			}
-			else if(peek == '/') {
-				readch();
-				if(peek == '/') {
-					index = s.indexOf('\n', index);
-					if(index == -1) {
-						index = s.length;
-					}
-				}
-				else if(peek == '*') {
-					index = s.indexOf('*/', index);
-					if(index == -1) {
-						index = length;
-					}
-					else {
-						index += 2;
-					}
-				}
-				else if(isReg) {
-					dealReg();
-					isReg = 0
-				}
-				else {
-					index--;
-					isReg = 1;
-				}
-			}
-			else if(isWord()) {
-				dealWord();
-			}
-			else if(isNumber()) {
-				dealNumber();
-			}
-			else if(peek == '(') {
-				parentheseStack.push(parentheseState);
-				isReg = 1
-			}
-			else if(peek == ')') {
-				isReg = parentheseStack.pop();
-			}
-			else {
-				isReg = peek != ']';
-				modName = 0
-			}
-		}
-		return res;
-		function readch() {
-			peek = s.charAt(index++);
-		}
-		function isBlank() {
-			return /\s/.test(peek);
-		}
-		function isQuote() {
-			return peek == '"' || peek == "'";
-		}
-		function dealQuote() {
-			var start = index;
-			var c = peek;
-			var end = s.indexOf(c, start);
-			if(end == -1) {
-				index = length;
-			}
-			else if(s.charAt(end - 1) != '\\') {
-				index = end + 1;
-			}
-			else {
-				while(index < length) {
-					readch();
-					if(peek == '\\') {
-						index++;
-					}
-					else if(peek == c) {
-						break;
-					}
-				}
-			}
-			if(modName) {
-				res.push(s.slice(start, index - 1));
-				modName = 0;
-			}
-		}
-		function dealReg() {
-			index--;
-			while(index < length) {
-				readch();
-				if(peek == '\\') {
-					index++
-				}
-				else if(peek == '/') {
-					break
-				}
-				else if(peek == '[') {
-					while(index < length) {
-						readch();
-						if(peek == '\\') {
-							index++;
-						}
-						else if(peek == ']') {
-							break;
-						}
-					}
-				}
-			}
-		}
-		function isWord() {
-			return /[a-z_$]/i.test(peek);
-		}
-		function dealWord() {
-			var s2 = s.slice(index - 1);
-			var r = /^[\w$]+/.exec(s2)[0];
-			parentheseState = {
-				'if': 1,
-				'for': 1,
-				'while': 1,
-				'with': 1
-			}[r];
-			isReg = {
-				'break': 1,
-				'case': 1,
-				'continue': 1,
-				'debugger': 1,
-				'delete': 1,
-				'do': 1,
-				'else': 1,
-				'false': 1,
-				'if': 1,
-				'in': 1,
-				'instanceof': 1,
-				'return': 1,
-				'typeof': 1,
-				'void': 1
-			}[r];
-			modName = /^require\s*\(\s*(['"]).+?\1\s*\)/.test(s2);
-			if(modName) {
-				r = /^require\s*\(\s*['"]/.exec(s2)[0];
-				index += r.length - 2;
-			}
-			else {
-				index += /^[\w$]+(?:\s*\.\s*[\w$]+)*/.exec(s2)[0].length - 1;
-			}
-		}
-		function isNumber() {
-			return /\d/.test(peek)
-				|| peek == '.' && /\d/.test(s.charAt(index));
-		}
-		function dealNumber() {
-			var s2 = s.slice(index - 1);
-			var r;
-			if(peek == '.') {
-				r = /^\.\d+(?:E[+-]?\d*)?\s*/i.exec(s2)[0];
-			}
-			else if(/^0x[\da-f]*/i.test(s2)) {
-				r = /^0x[\da-f]*\s*/i.exec(s2)[0];
-			}
-			else {
-				r = /^\d+\.?\d*(?:E[+-]?\d*)?\s*/i.exec(s2)[0];
-			}
-			index += r.length - 1;
-			isReg = 0;
-		}
-	}
-});
-
-Class.inherit(Module, Emitter);
-
-/**
- * 模块缓存器
- */
-var ModuleDB = function () {
-	var modules = {};
-	return {
-		add: function (module) {
-			if (!this.get(module.id, module.uri)) {
-				modules[module.id || module.uri] = module;
-				Loader.getLoader(module.id,module.uri,function(loader){
-					loader.$emit('loaded', module);
-				});
-			}
-			return this;
-		},
-		get: function (id, uri) {
-			return modules[id] || modules[uri];
-		}
-	}
-}();
-
-
-var Injector = function () {
-	var data = {
+	/**
+	 * 管理器公共数据存储域
+	 */
+	var Data = {
 		baseUrl:window.location.href,
-		shims:{},
 		vars:{},
 		packages:{},
-		alias:{}
+		alias:{},
+		shims:{}
 	};
-	/**
-	 * 获取当前脚本路径
-	 */
-	function getCurrentScript() {
-		var doc = document;
-		var head = doc.head || doc.getElementsByTagName("head")[0] || doc.documentElement;
-		if (doc.currentScript) {
-			return doc.currentScript.src;
-		}
-		var stack;
-		try {
-			a.b.c();
-		} catch (e) {
-			stack = e.stack;
-			if (!stack && window.opera) {
-				stack = (String(e).match(/of linked script \S+/g) || []).join(" ");
-			}
-		}
-		if (stack) {
-			stack = stack.split(/[@ ]/g).pop();
-			stack = stack[0] == "(" ? stack.slice(1, -1) : stack;
-			return stack.replace(/(:\d+)?:\d+$/i, "");
-		}
-		var nodes = head.getElementsByTagName("script");
-		for (var i = 0, node; node = nodes[i++];) {
-			if (node.readyState === "interactive") {
-				return node.className = node.src;
-			}
-		}
-	}
-
-	//path处理
-	function normalize(base, id) {
-		return resolvePath(base, id.replace(/\.js/,"")) + '.js';
-	}
-
-
-	function resolvePath() {
-		var numUrls = arguments.length;
-
-		if (numUrls === 0) {
-			throw new Error("resolveUrl requires at least one argument; got none.")
-		}
-
-		var base = document.createElement("base");
-		base.href = arguments[0];
-
-		if (numUrls === 1) {
-			return base.href
-		}
-
-		var head = document.getElementsByTagName("head")[0];
-		head.insertBefore(base, head.firstChild);
-
-		var a = document.createElement("a");
-		var resolved;
-
-		for (var index = 1; index < numUrls; index++) {
-			a.href = arguments[index];
-			resolved = a.href;
-			base.href = resolved
-		}
-
-		head.removeChild(base);
-
-		return resolved
-	}
 
 	/**
-	 * 判断是否是工厂类型
-	 * @param val
-	 * @returns {*}
+	 * 模块缓存器
 	 */
-	function _isFactory(val) {
-		return isFunction(val) || (isArray(val) && isFunction(val[val.length - 1]))
-	}
-
-	/**
-	 * 判断是否是依赖类型
-	 * @param dep_ids
-	 * @returns {boolean}
-	 */
-	function _isDeps(dep_ids) {
-		var res = true;
-		if (!isArray(dep_ids)) return false;
-		forEach(dep_ids, function (dep) {
-			if (!isString(dep)) {
-				return (res = false);
+	var ModuleCache = {
+		MODULES: {},
+		add: function (module) {
+			var path = module.path;
+			var mapId = module.path.id || module.path.uri;
+			var driver = _.Driver.getDriver(path);
+			if(!this.MODULES[mapId]){
+				this.MODULES[mapId] = module;
+				driver && driver.$emit("loaded",module);
 			}
-		});
-		return res;
-	}
-
-
-	/**
-	 * 解析模块，可以解析指定模块和匿名模块
-	 * @returns {{uri: string, id: string, dep_ids: Array, factory: Function,injectors: Object}}
-	 */
-	function _parseModule() {
-		var params = toArray(arguments),
-			id = "",
-			uri = "",
-			dep_ids = [],
-			factory,
-			injectors={},
-			auto_get_uri = true;
-		if (isBoolean(params[0])) {
-			auto_get_uri = params[0];
-			params = params.slice(1, 4);
-		} else {
-			params = params.slice(0, 3);
+			return this.MODULES[mapId];
+		},
+		//寻找缓存模块，通过id,或uri来寻找
+		get: function (path) {
+			return this.MODULES[path.id || path.uri] || this.MODULES[path.id] || this.MODULES[path.uri];
 		}
-		forEach(params, function (param) {
-			if (_isFactory(param)) {
-				if(isFunction(param)){
-					factory = param;
-				} else {
-					factory = param[param.length - 1];
-					dep_ids = param.slice(0,param.length - 1);
-				}
-			} else if (_isDeps(param)) {
-				dep_ids = param;
-			} else if (isString(param)) {
-				id = param;
-				uri = Injector.resolve(id);
-			} else if (isObject(param)) {
-				injectors = param;
-			}
-		});
-		if (!uri && auto_get_uri) {
-			uri = getCurrentScript();
-		}
-		return new Module({
-			uri: uri,
-			id: id,
-			dep_ids: dep_ids,
-			factory: factory,
-			injectors: injectors
-		});
-	}
+	};
 
-	/**
-	 * 内置调用方法，执行将已获得的依赖模块和注入包装工厂注入到模板模块的动作
-	 * @param resolve
-	 * @param module
-	 * @param dep_mods
-	 * @private
-	 */
-	function _invoke(resolve, module, dep_mods) {
-		var dep_instances = [], inst_nums = 0;
-		function inject(index, instance) {
-			var _inst;
-			if (instance) {
-				dep_instances[index] = instance;
-				inst_nums++;
-			}
-			if (inst_nums == module.dep_ids.length) {
-				if(!module.installed) {
-					if(module.dep_ids.indexOf('module') != -1 || module.dep_ids.indexOf('exports') != -1){
-						module.factory.apply(null, dep_instances);
-						_inst = module.module.exports;
-					} else {
-						_inst = module.module.exports = module.factory.apply(null, dep_instances) || {};
+	var Container = {
+		Module: Class({
+			constructor: function () {
+				this.$super();
+				this._init.apply(this, toArray(arguments));
+			},
+			_init: function (meta) {
+				merge(this, {
+					path: null,
+					depPaths: [],
+					factory: null,
+					injectors: {},
+					installed: false,
+					module: {
+						exports: null
 					}
-					module.installed = true;
-				} else {
-					_inst = module.module.exports;
-				}
-				resolve(_inst);
-			}
-		}
-		forEach(module.dep_ids, function (id, index) {
-			if (module.injectors && module.injectors[id]) {//包装注入优先
-				Injector.invoke(module.injectors[id]).then(function (instance) {//获取某个依赖的实例
-					inject(index, instance);
-				}).catch(function(e){
-					throw e;
-				});
-
-			} else {
-				forEach(dep_mods, function (dep) {//遍历依赖模块，调用依赖，按顺序注入
-					if (dep.id && dep.id == id || dep.uri && dep.uri == Injector.resolve(id)) {//寻找依赖模块
-						if (dep.installed) {
-							inject(index, dep.module.exports);
-						}
-						Injector.invoke(id).then(function (instance) {
-							inject(index, instance);
-						}).catch(function (e) {
-							throw e;
+				}, meta);
+				Hook.$emit("MODULE_PARSER", this);
+			},
+			_collectDeps: function () {
+				var that = this,
+					dependencies = [],
+					injector;
+				return _.Request.fetch(this, this.depPaths)
+					.then(function (modules) {
+						return new Promise(function (resolve) {
+							forEach(that.depPaths, function (path, index) {
+								injector = path.getMap(modules);
+								if (injector) {
+									dependencies[index] = injector.invoke();
+									if (dependencies.length == that.depPaths.length) {
+										resolve(Promise.all(dependencies));
+									}
+								}
+							}, function () {
+								resolve(Promise.all([]));
+							});
 						});
+					});
+			},
+
+			_inject: function () {
+				var that = this;
+				return this._collectDeps().then(function (dependencies) {
+					var instance = that.factory.apply(null, dependencies);
+					if (that.module.exports) {
+						instance = that.module.exports;
+					} else {
+						that.module.exports = instance;
 					}
+					that.installed = true;
+					return instance;
+				});
+			},
+			//寻找注入模块，通过id来索引
+			getInjector: function (path) {
+				var injector = this.injectors[path.id];
+				if (injector) {
+					return _.Module.createModule(path.id, injector);
+				}
+			},
 
-
+			invoke: function () {
+				var that = this;
+				return new Promise(function (resolve) {
+					if (that.installed) {
+						resolve(Promise.resolve(that.module.exports));
+					} else if (that.factory) {
+						resolve(Promise.resolve(that._inject()));
+					} else {
+						if (that.path && !that.factory) {
+							resolve(_.Request.fetch(that, that.path).then(function (modules) {
+								return Promise.resolve(modules[0]._inject());
+							}));
+						} else {
+							throw new Error('模块不符合规范!');
+						}
+					}
 				});
 			}
-		}, function () {
-			inject();
-		});
-	}
 
-	/**
-	 * 支持别名替换
-	 * @param id
-	 * @returns {*}
-	 */
-
-	function template(url){
-		if(!isString(url)) throw new Error('路径类型错误');
-		var reg = /\{([^{}]+)\}/g,res;
-		res = url.replace(reg,function(match,param){
-			return data.vars[param] ? data.vars[param] : param
-		});
-		if(reg.test(res)){
-			return template(res);
-		} else {
-			return res;
-		}
-	}
-
-	function addSl(url){
-		return url.replace(/\/$/,"")+"/";
-	}
-
-	function alias2shim(id){
-		id = data.shims[id] ? (data.shims[id].url || data.shims[id].uri) : data.alias[id] ? data.alias[id] : id;
-		id = template(id);
-		id = data.shims[id] ? (data.shims[id].url || data.shims[id].uri) : id;
-		return id;
-	}
-
-	/**
-	 * 支持包管理
-	 */
-
-	function getPackage(id){
-		var name,index;
-		index = id.indexOf("/");
-		name = id.substr(0,index);
-
-		if(data.packages && data.packages[name]){
-			return {
-				name:addSl(data.packages[name].url || data.packages[name].uri || ""),
-				path:id.substr(index+1)
-			};
-		}
-		return {
-			name:"",
-			path:id
-		};
-	}
-
-
-	return {
-		config: function (options) {
-			merge(data,options);
-		},
-		resolve: function (id) {
-			var pack;
-			id = alias2shim(id);
-			pack = getPackage(id);
-			return normalize(pack.name || data.baseUrl, pack.path);
-		},
-		data:function(name){
-			return name ? data[name] : data;
-		},
-		define: function () {
-			var tmp_mod = _parseModule.apply(null, toArray(arguments));
-			if(tmp_mod.uri && tmp_mod.factory) {
-				ModuleDB.add(tmp_mod);
-			} else {
-				throw new Error('模块定义不规范');
-			}
-			return tmp_mod;
-		},
-		invoke: function () {
-			var loader,
-				tmp_mod = _parseModule.apply(null, toArray(arguments));
-			loader = new Loader(tmp_mod);
-			return new Promise(function (resolve) {
-				if (tmp_mod.id && !tmp_mod.factory) {//调用远程模块
-					loader.fetch(function (module) {
-						module = merge(tmp_mod,module);
-						loader.setModule(module);
-						if(module.dep_ids.length > 0) {
-							loader.fetchDeps(function (dep_mods) {
-								_invoke(resolve, module, dep_mods);
+		}, {
+			createModule: function () {
+				return new _.Module(_.Module.parseMeta.apply(null, toArray(arguments)));
+			},
+			parseMeta: function () {
+				var meta = {},
+					params = toArray(arguments),
+					auto_path = false;
+				if (isBoolean(params[0])) {
+					auto_path = params[0];
+					params = params.slice(1);
+				}
+				forEach(params, function (param) {
+					if (isFunction(param)) {
+						meta.factory = param;
+					} else if (isArray(param)) {
+						if (isFunction(param[param.length - 1])) {
+							meta.factory = param[param.length - 1];
+							meta.depPaths = param.slice(0, param.length - 1).map(function (id) {
+								return new _.Path(id);
 							});
 						} else {
-							_invoke(resolve, module, []);
+							meta.depPaths = param.map(function (id) {
+								return new _.Path(id);
+							});
 						}
-					});
-
-				} else if (!tmp_mod.id && tmp_mod.factory) {//调用匿名模块
-					if(tmp_mod.dep_ids.length > 0 ) {
-						loader.fetchDeps(function (dep_mods) {
-							_invoke(resolve, tmp_mod, dep_mods);
-						});
-					} else {
-						_invoke(resolve, tmp_mod, []);
+					} else if (isString(param)) {
+						meta.path = new _.Path(param);
+					} else if (isObject(param)) {
+						meta.injectors = param;
 					}
 
-
-				} else {
-					throw new Error('模块调用不符合规范');
+				});
+				if (!meta.path && auto_path) {
+					meta.path = new _.Path();
 				}
-			});
+				return meta;
+
+			},
+			registerModuleParser: function (method) {
+				if (!isFunction(method)) return;
+				Hook.$on("MODULE_PARSER", function (that) {
+					method.call(that);
+				});
+			}
+		}),
+
+		Request: Class({
+			constructor: function () {
+				this.$super();
+				this._init.apply(this, toArray(arguments));
+			},
+			_init: function (sender, reqs, callback) {
+				this.sender = sender;
+				this.reqs = isArray(reqs) ? reqs : [reqs];
+				this.drivers = [];
+				this.results = [];
+				this.callback = callback;
+				this._parseReqs();
+				this.send();
+			},
+
+			_createDriver: function (path) {
+				var driver = _.Driver.getDriver(path),
+					that = this;
+				if (!driver) {
+					driver = new _.Driver(path);
+					driver.beforeLoad();
+					if (!driver.module) {
+						this.drivers.push(driver);
+					} else {
+						that._done(driver.module);
+					}
+				}
+				if(!driver.module) {
+					driver.$on("loaded", function (module) {
+						driver.module = module;
+						that._done(module);
+					});
+				} else {
+					that._done(driver.module);
+				}
+			},
+			_parseReqs: function () {
+				var that = this, module;
+				forEach(this.reqs, function (path) {
+					module = that.sender.getInjector(path);
+					module = module || path.getModule();
+					if (module) {
+						that._done(module);
+					} else {
+						that._createDriver(path);
+					}
+				}, function () {
+					that.callback([]);
+				});
+			},
+			send: function () {
+				forEach(this.drivers, function (driver) {
+					driver.load();
+				});
+			},
+			_checkDone: function () {
+				return this.reqs.length == this.results.length;
+			},
+			_done: function (module) {
+				this.results.push(module);
+				if (this._checkDone()) {
+					if (isFunction(this.callback)) {
+						this.callback(this.results);
+					}
+				}
+			}
+		}, {
+			fetch: function (sender, paths) {
+				paths = isArray(paths) ? paths : [paths];
+				return new Promise(function (resolve) {
+					new _.Request(sender, paths, function (modules) {
+						resolve(modules);
+					});
+				});
+			}
+		}),
+
+		Driver: Class({
+			constructor: function () {
+				this.$super();
+				this._init.apply(this, toArray(arguments));
+			},
+			_init: function (path) {
+				this.path = path;
+				this.module = null;
+				if (!_.Driver.getDriver(path)) {
+					_.Driver.addDriver(this);
+				}
+			},
+			loaded: function (err, res) {
+				var path = this.path;
+				if (path.ext != "js") {
+					Dectorator.define(path.id, function () {
+						return res;
+					});
+				} else {
+					Hook.$emit("DRIVER_LOADED", this,err,res);
+				}
+			},
+			beforeLoad: function () {
+				Hook.$emit("DRIVER_BEFORE_LOAD", this);
+			},
+			load: function () {
+				var path = this.path;
+				if (path.ext != "js") {
+					Hook.$emit("DRIVER_LOADER_" + path.ext.toLocaleUpperCase(), this);
+				} else {
+					this._loadJS(path.uri, bind(this.loaded, this));
+				}
+			},
+			_loadJS: function (url, callback) {
+				var doc = document;
+				var head = doc.head || doc.getElementsByTagName("head")[0] || doc.documentElement;
+				var baseElement = head.getElementsByTagName("base")[0];
+				var node = doc.createElement("script");
+				node.async = true;
+				node.src = url;
+				addOnload(node, callback);
+
+				baseElement ?
+					head.insertBefore(node, baseElement) :
+					head.appendChild(node);
+
+				function addOnload(node, callback) {
+					var supportOnload = "onload" in node;
+
+					if (supportOnload) {
+						node.onload = onload;
+						node.onerror = function () {
+							onload(true)
+						}
+					}
+					else {
+						node.onreadystatechange = function () {
+							if (/loaded|complete/.test(node.readyState)) {
+								onload()
+							}
+						}
+					}
+
+					function onload(e) {
+						// Ensure only run once and handle memory leak in IE
+						node.onload = node.onerror = node.onreadystatechange = null;
+
+						// Remove the script to reduce memory leak
+						if (!Manager.data("debug")) {
+							head.removeChild(node);
+						}
+
+						// Dereference the node
+						node = null;
+
+						callback && callback(e);
+					}
+				}
+			}
+		}, {
+			DRIVERS: {},
+			//寻找驱动，通过uri来索引
+			getDriver: function (path) {
+				return this.DRIVERS[path.uri];
+			},
+			addDriver: function (driver) {
+				this.DRIVERS[driver.path.uri] = driver;
+			},
+			registerDriverLoaded: function (method) {
+				if (!isFunction(method)) return;
+				Hook.$on("DRIVER_LOADED", function (that) {
+					method.call(that);
+				});
+			},
+			registerDriverLoader: function (ext, method) {
+				if (!isFunction(method)) return;
+				ext = ext.trim();
+				ext = ext.toUpperCase();
+				Hook.$one("DRIVER_LOADER_" + ext, function (that) {
+					method.call(that, that.path.uri, bind(that.loaded, that));
+				});
+			},
+			registerDriverBeforeLoad: function (method,err,res) {
+				if (!isFunction(method)) return;
+				Hook.$on("DRIVER_BEFORE_LOAD", function (that) {
+					method.call(that,err,res);
+				});
+			}
+		}),
+
+
+		Path: Class({
+			constructor: function () {
+				this.$super();
+				this._init.apply(this, toArray(arguments));
+			},
+			_init: function (id, baseUrl) {
+				this.baseUrl = baseUrl || Data.baseUrl;
+				this.id = id || "";
+				this._initId();
+				this._maper();
+				this._parser();
+				this._initUri();
+			},
+
+			__EXTS__: ["js", "css", "json", "jsonp", "tpl", "html"],
+
+			_initId: function () {
+				if (!this.id) return;
+				var parser = document.createElement('a');
+				parser.href = this.id;
+				this.query = this.getQuery(parser.search);
+				this.hash = parser.hash.replace("#", "");
+				this.id = this.id.replace(/(#|\?).*/, "");
+			},
+
+			_initUri: function () {
+				this.baseUrl = this.baseUrl.replace(/\/$/, "") + "/";
+				this.uri =  this.uri ? this.resolvePath(this.baseUrl, this.uri) : this.id ? this.resolvePath(this.baseUrl, this.id) : this.getCurrentScript();
+				this._initExt();
+			},
+
+			_initExt: function () {
+				var ext = this.uri.match(/\.(\w+)$/);
+				if (ext && ext[1]) {
+					ext = ext[1].toLocaleLowerCase();
+					if (this.__EXTS__.indexOf(ext) != -1) {
+						this.ext = ext;
+					} else {
+						this.$emit("FILE_EXTS_PARSER", this);
+						if (!this.__EXTS__.indexOf(this.ext)){
+							this.ext = "js";
+						}
+					}
+				} else {
+					this.ext = "js";
+					this.uri += ".js";
+				}
+			},
+
+			_maper:function(){
+				if (!this.id) return;
+				Hook.$emit("PATH_MAPER", this);
+			},
+
+
+			_parser: function () {
+				if (!this.id) return;
+				this._parseVars();
+				Hook.$emit("PATH_PARSER", this);
+
+			},
+
+			_parseVars: function () {
+				this.baseUrl = this.template(this.baseUrl);
+				this.id = this.template(this.id);
+			},
+
+			getModule: function () {
+				return ModuleCache.get(this);
+			},
+
+			equal: function (path) {
+				return (this.id && this.id == path.id) || (this.uri && this.uri == path.uri);
+			},
+
+			getMap: function (obj) {
+				var result, that = this;
+				if (isArray(obj)) {
+					forEach(obj, function (item) {
+						if (item.equal && item.equal(that) || (item.path && item.path.equal(that))) {
+							result = item;
+							return false;
+						}
+					});
+				} else if (isObject(obj)) {
+					return obj && obj[this.id || this.uri];
+				}
+				return result;
+			},
+
+			template: function (url) {
+				if (!isString(url)) throw new Error('路径类型错误');
+				var reg = /\{([^{}]+)\}/g, res, that = this;
+				res = url.replace(reg, function (match, param) {
+					return Data.vars && Data.vars[param] ? Data.vars[param] : param
+				});
+				if (reg.test(res)) {
+					return that.template(res);
+				} else {
+					return res;
+				}
+			},
+			getQuery: function (query) {
+				var vars = query.replace("?", "").split('&'), result = {};
+				for (var i = 0; i < vars.length; i++) {
+					var pair = vars[i].split('=');
+					result[decodeURIComponent(pair[0])] = decodeURIComponent(pair[1]);
+				}
+				return result;
+			},
+			isAbsolutePath: function (path) {
+				var reg = new RegExp('^(?:[a-z]+:)?\/\/', 'i');
+				return reg.test(path);
+			},
+			resolvePath: function () {
+				var numUrls = arguments.length;
+
+				if (numUrls === 0) {
+					throw new Error("resolveUrl requires at least one argument; got none.")
+				}
+
+				var base = document.createElement("base");
+				base.href = arguments[0];
+
+				if (numUrls === 1) {
+					return base.href
+				}
+
+				var head = document.getElementsByTagName("head")[0];
+				head.insertBefore(base, head.firstChild);
+
+				var a = document.createElement("a");
+				var resolved;
+
+				for (var index = 1; index < numUrls; index++) {
+					a.href = arguments[index];
+					resolved = a.href;
+					base.href = resolved
+				}
+
+				head.removeChild(base);
+
+				return resolved
+			},
+
+			getCurrentScript: function () {
+				var doc = document;
+				var head = doc.head || doc.getElementsByTagName("head")[0] || doc.documentElement;
+				if (doc.currentScript) {
+					return doc.currentScript.src;
+				}
+				var stack;
+				try {
+					a.b.c();
+				} catch (e) {
+					stack = e.stack;
+					if (!stack && window.opera) {
+						stack = (String(e).match(/of linked script \S+/g) || []).join(" ");
+					}
+				}
+				if (stack) {
+					stack = stack.split(/[@ ]/g).pop();
+					stack = stack[0] == "(" ? stack.slice(1, -1) : stack;
+					return stack.replace(/(:\d+)?:\d+$/i, "");
+				}
+				var nodes = head.getElementsByTagName("script");
+				for (var i = 0, node; node = nodes[i++];) {
+					if (node.readyState === "interactive") {
+						return node.className = node.src;
+					}
+				}
+			}
+		}, {
+			registerFileExtParser: function (method) {
+				if (!isFunction(method)) return;
+				Hook.$on("FILE_EXTS_PARSER", function (that) {
+					method.call(that);
+				});
+			},
+			registerPathParser: function (method) {
+				if (!isFunction(method)) return;
+				Hook.$on("PATH_PARSER", function (that) {
+					method.call(that);
+				});
+			},
+			registerPathMaper: function (method) {
+				if (!isFunction(method)) return;
+				Hook.$on("PATH_MAPER", function (that) {
+					method.call(that);
+				});
+			},
+			createPath: function (id,baseUrl) {
+				return new _.Path(id,baseUrl);
+			}
+		})
+	};
+
+	var _ = Container;
+
+	var PluginAPI = {
+		registerModuleParser: _.Module.registerModuleParser,
+
+		registerDriverLoader: _.Driver.registerDriverLoader,
+		registerDriverLoaded:_.Driver.registerDriverLoaded,
+		registerDriverBeforeLoad: _.Driver.registerDriverBeforeLoad,
+
+		registerFileExtParser: _.Path.registerFileExtParser,
+		registerPathParser: _.Path.registerPathParser,
+		registerPathMaper: _.Path.registerPathMaper,
+
+		createModule: _.Module.createModule,
+		createPath: _.Path.createPath
+	};
+
+
+
+	forEach(Container,function(_,className){
+		Class.inherit(Container[className], Emitter);
+	});
+
+	/**
+	 *  返回一个装饰器
+	 */
+	var Dectorator = {
+		/**
+		 * 配置方法
+		 */
+		config: function (config) {
+			merge(true,Data, config);
+			return this;
 		},
-		//和invoke功能相同，只是会自动报错
+		/**
+		 * 获取全局数据
+		 */
+		data: function (name) {
+			return Data[name] ? Data[name] : Data;
+		},
+		/**
+		 * 模块定义方法
+		 */
+		define: function () {
+			ModuleCache.add(_.Module.createModule.apply(null,[true].concat(toArray(arguments))));
+			return this;
+		},
+		/**
+		 * 模块调用方法
+		 */
+		invoke: function () {
+			return _.Module.createModule.apply(null,toArray(arguments)).invoke();
+		},
+		/**
+		 * 使用模块方法
+		 */
 		use: function (id,callback) {
-			this.invoke(id).then(callback).catch(function(e){
+			var module = _.Module.createModule(id);
+			module.invoke(function(instance){
+				isFunction(callback) && callback(instance);
+			}).catch(function(e){
 				throw e;
 			});
+		},
+		/**
+		 * 插件注册工厂方法
+		 */
+		registerPlugin: function (factory) {
+			if (isFunction(factory)) {
+				factory.call(this, PluginAPI);
+			}
 		}
 	};
-}();
+
+	return Dectorator;
+})();

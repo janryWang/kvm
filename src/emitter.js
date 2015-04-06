@@ -25,6 +25,17 @@ var Emitter = Class({
 		});
 		return this;
 	},
+	$one:function(eventNames,fn){
+		var _this = this;
+		eventNames = eventNames.split(",");
+		forEach(eventNames, function (eventName) {
+			if (isFunction(fn)) {
+				if (!_this.__$$events__[eventName])
+					_this.__$$events__[eventName] = [fn];
+			}
+		});
+		return this;
+	},
 	$emit: function (eventName) {
 		var args = toArray(arguments),
 			i = 0,

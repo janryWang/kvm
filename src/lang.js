@@ -94,8 +94,10 @@ function unique(source) {
  * @returns {Function}
  */
 function bind(fun,context) {
+	var args = toArray(arguments);
+	args = args.slice(2);
 	return function () {
-		if (isFunction(fun)) return fun.apply(context, toArray(arguments));
+		if (isFunction(fun)) return fun.apply(context, toArray(arguments).concat(args));
 	};
 }
 
@@ -207,25 +209,6 @@ function eachTask() {
 }
 
 
-/**
- * 爬对象，默认深度遍历
- * @param obj 目标对象
- * @param callback 回调函数
- * @param isDeep 是否深度遍历
- */
-function crawlObject(obj, callback, isDeep) {
-	isDeep = isBoolean(isDeep) && isDeep === false ? false : true;
-	if (!isFunction(callback)) return;
-	forEach(obj, function (val, key) {
-		if (isReference(val) && isDeep) {
-			callback(val, key);
-			crawlObject(val, callback);
-		} else {
-			callback(val, key);
-		}
-	});
-}
-
 
 /**
  * 合并对象，可以深度合并也可以浅合并
@@ -258,11 +241,15 @@ function merge() {
 	if (args_length === 2) {
 		forEach(args[1],
 			function (item, name) {
-				if(isFunction(callback)) callback(name,args[0],args[1]);
+				if(isFunction(callback)) {
+					callback(name, args[0], args[1]);
+				}
 				if (args[1][name] !== undefined && args[1][name] !== null) {
 					if(!isCover) {
 						if (!args[0][name]) {
-							args[0][name] = args[0][name] || args[1][name].constructor();
+							if(isReference(args[1][name])){
+								args[0][name] = args[0][name] || (isArray(args[1][name]) ? []:{});
+							}
 							if (isDeep && isReference(item)) {
 								merge(isDeep, args[0][name], item,isCover,callback);
 							} else {
@@ -270,7 +257,9 @@ function merge() {
 							}
 						}
 					} else {
-						args[0][name] = args[0][name] || args[1][name].constructor();
+						if(isReference(args[1][name])){
+							args[0][name] = args[0][name] || (isArray(args[1][name]) ? []:{});
+						}
 						if (isDeep && isReference(item)) {
 							merge(isDeep, args[0][name], item,isCover,callback);
 						} else {
@@ -351,34 +340,3 @@ function copy() {
 	return res;
 }
 
-
-function inPaths(path, paths, _swap) {
-	var res, _inPath;
-	res = false;
-	_inPath = function(a, b) {
-		var a_l, b_l, index;
-		a_l = a.length;
-		b_l = b.length;
-		index = 0;
-		while (index < b_l) {
-			if (b.charAt(index) !== a.charAt(index)) {
-				return false;
-			}
-			index++;
-		}
-		if (index === b_l) {
-			if (a_l === b_l) {
-				return true;
-			} else if (a_l > b_l && "[.".indexOf(a.charAt(b_l)) > -1) {
-				return true;
-			}
-		}
-	};
-	forEach(paths, function(_path) {
-		res = _swap ? _inPath(_path, path) : _inPath(path, _path);
-		if (res) {
-			return false;
-		}
-	});
-	return res;
-}

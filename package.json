@@ -1,7 +1,7 @@
 {
   "name": "kvm.js",
-  "version": "0.1.0",
-  "description": "一款兼容AMD,AMD,angular模块规范同时支持依赖注入的模块管理器",
+  "version": "0.1.5",
+  "description": "一款兼容AMD,CMD,angular模块规范同时支持依赖注入的模块管理器",
   "keywords": [
     "模块管理器",
     "依赖注入",
@@ -20,6 +20,7 @@
     "gulp-clean": "^0.3.1",
     "gulp-concat": "^2.5.2",
     "gulp-header": "^1.2.2",
+    "gulp-mocha": "^2.0.1",
     "gulp-rename": "^1.2.0",
     "gulp-uglify": "^1.1.0"
   },

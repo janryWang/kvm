@@ -1,6 +1,6 @@
 <img src="https://raw.githubusercontent.com/janryWang/kvm/master/logo.png" width="499" height="260" alt="KVM.js 模块管理器(v0.0.3)">
 
-KVM.js 模块管理器(v0.1.0),带给你不一样的模块管理体验
+KVM.js 模块管理器(v0.1.5),带给你不一样的模块管理体验
 
 支持AMD,CMD规范，支持依赖注入，支持插件式加载脚本
 
@@ -16,6 +16,12 @@ bower install kvm
 
  
 #更新日志
+
+v0.1.5
+===
+* 重构，将内部模块解耦,以Promise为核心，可通过模块返回Promise对象来延迟加载依赖
+* 依赖可以依赖css，在querystring中使用media="xxxx"可以控制响应式样式表范围
+* 添加了插件模式，可以随意的给kvm添加各种插件
 
 v0.1.0
 ===

@@ -31,14 +31,29 @@ gulp.task('concat',['clean-scripts'],function () {
 		'./src/emitter.js',
 		'./src/module.js',
 		'./src/kvm.js',
-		'./src/outro.js'])
+		'./src/outro.js',
+		'./plugins/*.js'])
 		.pipe(concat('kvm.js'))
 		.pipe(jshint())
 		.pipe(gulp.dest('dist'))
 });
 
+gulp.task('concat-mini',['concat'],function () {
+	return gulp.src([
+		'./src/intro.js',
+		'./src/lang.js',
+		'./src/do.js',
+		'./src/class.js',
+		'./src/emitter.js',
+		'./src/module.js',
+		'./src/kvm.js',
+		'./src/outro.js'])
+		.pipe(concat('kvm-mini.js'))
+		.pipe(jshint())
+		.pipe(gulp.dest('dist'))
+});
 
-gulp.task('compress',['concat'], function () {
+gulp.task('compress',['concat-mini'], function () {
 	return gulp.src('dist/**/*.js')
 		.pipe(uglify())
 		.pipe(header(banner, {pkg: pkg}))

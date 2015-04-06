@@ -74,6 +74,20 @@ Class.inherit = function () {
 };
 
 /**
+ * 扩展类
+ * @param _class
+ * @param _prototype
+ * @param _static
+ */
+
+Class.extend = function(_class,_prototype,_static){
+	if(isFunction(_class)) {
+		merge(_class.prototype, _prototype);
+		merge(_class, _static);
+	}
+};
+
+/**
  * 通过协议来约定接口规范
  */
 Class.protocol = function (Interface) {
