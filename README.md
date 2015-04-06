@@ -115,9 +115,6 @@ KVM.module
      shims:{//模块包装器，主要是为了兼容第三方模块
         angular:{
            url:"",
-           checkConflict:function(){
-           		//在这里可以通过判断全局作用域下是否已存在某个依赖库来防止多次加载脚本，如果你返回true，则说明存在，如果返回false则说明不存在。
-           },
            facotry:[deps,function(){//这里定义facotry可以是数组也可以是函数，随便你怎样搞
               return angular
            }],
