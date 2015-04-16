@@ -820,7 +820,7 @@ var Manager = (function () {
 						node.onload = node.onerror = node.onreadystatechange = null;
 
 						// Remove the script to reduce memory leak
-						if (!Manager.data("debug")) {
+						if (Manager.data("debug")) {
 							head.removeChild(node);
 						}
 
@@ -1220,7 +1220,7 @@ global.define.amd = true;
 					return function(id){
 						var path = API.createPath(id);
 						var module = path.getModule();
-						return module.module.exports;
+						return module && module.module && module.module.exports ? module.module.exports : {};
 					}
 				};
 			};

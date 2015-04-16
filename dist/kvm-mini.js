@@ -820,7 +820,7 @@ var Manager = (function () {
 						node.onload = node.onerror = node.onreadystatechange = null;
 
 						// Remove the script to reduce memory leak
-						if (!Manager.data("debug")) {
+						if (Manager.data("debug")) {
 							head.removeChild(node);
 						}
 

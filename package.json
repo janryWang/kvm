@@ -1,6 +1,6 @@
 {
   "name": "kvm.js",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "一款兼容AMD,CMD,angular模块规范同时支持依赖注入的模块管理器",
   "keywords": [
     "模块管理器",

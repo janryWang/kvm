@@ -30,7 +30,7 @@
 					return function(id){
 						var path = API.createPath(id);
 						var module = path.getModule();
-						return module.module.exports;
+						return module && module.module && module.module.exports ? module.module.exports : {};
 					}
 				};
 			};
