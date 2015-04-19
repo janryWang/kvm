@@ -29,7 +29,7 @@ gulp.task('concat',['clean-scripts'],function () {
 		'./src/do.js',
 		'./src/class.js',
 		'./src/emitter.js',
-		'./src/module.js',
+		'./src/core.js',
 		'./src/kvm.js',
 		'./src/outro.js',
 		'./plugins/*.js'])
@@ -45,7 +45,7 @@ gulp.task('concat-mini',['concat'],function () {
 		'./src/do.js',
 		'./src/class.js',
 		'./src/emitter.js',
-		'./src/module.js',
+		'./src/core.js',
 		'./src/kvm.js',
 		'./src/outro.js'])
 		.pipe(concat('kvm-mini.js'))

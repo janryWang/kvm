@@ -574,6 +574,10 @@ var Manager = (function () {
 		Class.inherit(Container[className], Emitter);
 	});
 
+	if(!global.Promise){
+		throw "浏览器不支持Promise,请升级浏览器再使用该管理器！或者使用kvm-promise.js"
+	}
+
 	/**
 	 *  返回一个装饰器
 	 */
