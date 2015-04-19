@@ -1,6 +1,6 @@
 <img src="https://raw.githubusercontent.com/janryWang/kvm/master/logo.png" width="499" height="260" alt="KVM.js 模块管理器(v0.0.3)">
 
-KVM.js 模块管理器(v0.1.5),带给你不一样的模块管理体验
+KVM.js 模块管理器(v0.1.8),带给你不一样的模块管理体验
 
 支持AMD,CMD规范，支持依赖注入，支持插件式加载脚本
 
@@ -16,6 +16,10 @@ bower install kvm
 
  
 #更新日志
+
+v0.1.8
+===
+* 修复commonjs在safari下的性能问题
 
 v0.1.5
 ===
