@@ -29,7 +29,9 @@ let utils = {
 		let key;
 		parser.href = url.replace("?","");
 		for(key in query) {
-			str += `${key}=${query[key]}&`;
+			if(query.hasOwnProperty(key) && query[key]) {
+				str += `${key}=${query[key]}&`;
+			}
 		}
 		parser.search = str.replace(/&$/,"");
 		return parser.toString();

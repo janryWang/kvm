@@ -9,7 +9,8 @@ let Data = {
 	vars: {},
 	packages: {},
 	alias: {},
-	shims: {}
+	shims: {},
+	version:""
 };
 
 let ModuleCache = {
@@ -160,7 +161,7 @@ class Driver extends Emitter {
 	load() {
 		let path = this.path;
 		let uri = path.uri;
-		uri = utils.addQueryString(uri,path.query);
+		uri = utils.addQueryString(uri,Object.assign({version:Data.version},path.query));
 		uri = utils.addHashString(uri,path.hash);
 		if (path.ext != "js") {
 			Hook.$emit("DRIVER_LOADER_" + path.ext.toLocaleUpperCase(), this);
