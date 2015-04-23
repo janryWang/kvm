@@ -5,8 +5,10 @@ var jshint = require('gulp-jshint');
 var clean = require('gulp-clean');
 var rename = require('gulp-rename');
 var header = require('gulp-header');
+var serve = require('gulp-serve');
 var pkg = require('./package.json');
-
+var browserify = require('gulp-browserify');
+var babelify = require('babelify');
 var banner = [
 	'/**',
 	' ** <%= pkg.name %> - <%= pkg.description %>',
@@ -17,12 +19,12 @@ var banner = [
 ].join('\n');
 
 
-gulp.task('clean-scripts',function(){
+gulp.task('clean',function(){
 	return gulp.src('dist', {read: false})
 		.pipe(clean());
 });
 
-gulp.task('concat',['clean-scripts'],function () {
+/*gulp.task('concat',['clean-scripts'],function () {
 	return gulp.src([
 		'./src/intro.js',
 		'./src/lang.js',
@@ -52,8 +54,25 @@ gulp.task('concat-mini',['concat'],function () {
 		.pipe(jshint())
 		.pipe(gulp.dest('dist'))
 });
+*/
 
-gulp.task('compress',['concat-mini'], function () {
+gulp.task('build-scripts',['clean'],function(){
+	return gulp.src('src/kvm.js')
+	.pipe(browserify({
+			transform: [babelify.configure({
+				optional: ["runtime"]
+			})]
+		}))
+		.pipe(gulp.dest('dist'))
+});
+
+gulp.task('build-plugins',function(){
+	return gulp.src('plugins/*.js')
+		.pipe(concat('kvm-plugins.js'))
+		.pipe(gulp.dest('dist'))
+});
+
+gulp.task('compress',['build-scripts','build-plugins'], function () {
 	return gulp.src('dist/**/*.js')
 		.pipe(uglify())
 		.pipe(header(banner, {pkg: pkg}))
@@ -64,10 +83,15 @@ gulp.task('compress',['concat-mini'], function () {
 
 });
 
+gulp.task('serve',serve({
+	root: ['dist', 'test'],
+	port: 3000
+}));
+
 gulp.task('watch',function(){
-	gulp.watch('./src/*.js', ['compress']);
+	gulp.watch('./{src,plugins}/*.js', ['compress']);
 });
 
-gulp.task('default',['watch']);
+gulp.task('default',['watch','serve']);
 
 gulp.task('build',['compress']);

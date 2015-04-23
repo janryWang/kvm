@@ -3,9 +3,10 @@
  */
 (function () {
 	kvm.module.registerPlugin(function (API) {
-		var baseUrl = kvm.module.data('baseUrl');
-		var packages = kvm.module.data('packages');
+		var Data = kvm.module.data();
 		API.registerPathParser(function () {
+			var baseUrl = Data.baseUrl;
+			var packages = Data.packages;
 			var packname, index,
 				uri = this.uri || this.id;
 			if(!uri) return;

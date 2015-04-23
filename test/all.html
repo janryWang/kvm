@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title></title>
+    <script src="http://localhost:3000/kvm.min.js"></script>
+    <script src="http://localhost:3000/kvm-plugins.min.js"></script>
+</head>
+<body>
+<script>
+    kvm.module.config({
+        baseUrl:"http://localhost:3000/modules",
+        packages:{
+            shim:{
+                url:"http://localhost:3000/modules/shim"
+            },
+            amd:{
+                url:"http://localhost:3000/modules/amd"
+            },
+            commonjs:{
+                url:"http://localhost:3000/modules/commonjs"
+            }
+        },
+        shims:{
+            world:{
+                uri:"shim/a",
+                exports:"helloWorld"
+            }
+        },
+        vars:{
+          cj:"commonjs/a"
+        },
+        alias:{
+            hello:"commonjs/a",
+            hi:"{cj}"
+        }
+    });
+    kvm.module.invoke(["amd/a","$emitter"],function(res1,res2){
+        console.log(res1,res2);
+    });
+    kvm.module.invoke(["commonjs/a"],function(res){
+        res();
+    });
+    kvm.module.invoke(["hello"],function(res){
+        res();
+    });
+    kvm.module.invoke(["hi"],function(res){
+        res();
+        console.log("he he");
+    });
+    kvm.module.invoke(["world?version=0.0.1"],function(res){
+        console.log(res,"querystring");
+    });
+</script>
+</body>
+</html>

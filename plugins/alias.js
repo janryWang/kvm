@@ -5,7 +5,7 @@
 	kvm.module.registerPlugin(function(API){
 		API.registerPathMaper(function(){
 			var alias = kvm.module.data('alias');
-			if (this.isAbsolutePath(this.id)) return;
+			if(kvm.isAbsolutePath(this.id)) return;
 			if(alias[this.id]){
 				this.uri = alias[this.id];
 				this._parser();

@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title></title>
+    <script src="http://localhost:3000/kvm.js"></script>
+</head>
+<body>
+<script>
+    kvm.module.config({
+        baseUrl:"http://localhost:3000/modules/"
+    });
+    kvm.module.invoke(["amd/a","$emitter"],function(res1,res2){
+        console.log(res1,res2);
+    });
+    kvm.module.invoke(["amd/c-ab"],function(res){
+        console.log(res);
+    });
+</script>
+</body>
+</html>

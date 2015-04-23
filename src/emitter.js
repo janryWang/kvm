@@ -1,55 +1,51 @@
+import  utils from "./utils";
 
+export default class Emitter {
+	constructor(events) {
+		if (events)
+			this.$$EVENTS = events;
+		else
+			this.$$EVENTS = {};
 
-/**
- * 事件分发器
- * @type {*}
- */
+	}
 
-var Emitter = Class({
-	constructor: function (events) {
-		if (events) {
-			this.__$$events__ = events;
-		} else {
-			this.__$$events__ = {};
-		}
-	},
-	$on: function (eventNames, fn) {
-		var _this = this;
-		eventNames = eventNames.split(",");
-		forEach(eventNames, function (eventName) {
-			if (isFunction(fn)) {
-				if (_this.__$$events__[eventName] && isArray(_this.__$$events__[eventName]))
-					_this.__$$events__[eventName].push(fn);
-				else _this.__$$events__[eventName] = [fn];
+	$on(names, fn) {
+		let _this = this;
+		names.split(",").forEach(function (_name) {
+			if (utils.isFunction(fn)) {
+				if (_this.$$EVENTS[_name] && utils.isArray(_this.$$EVENTS[_name]))
+					_this.$$EVENTS[_name].push(fn);
+				else _this.$$EVENTS[_name] = [fn];
 			}
 		});
 		return this;
-	},
-	$one:function(eventNames,fn){
-		var _this = this;
-		eventNames = eventNames.split(",");
-		forEach(eventNames, function (eventName) {
-			if (isFunction(fn)) {
-				if (!_this.__$$events__[eventName])
-					_this.__$$events__[eventName] = [fn];
+	}
+
+	$one(names, fn) {
+		let _this = this;
+		names.split(",").forEach(function (_name) {
+			if (utils.isFunction(fn)) {
+				if (!_this.$$EVENTS[_name])
+					_this.$$EVENTS[_name] = [fn];
 			}
 		});
 		return this;
-	},
-	$emit: function (eventName) {
-		var args = toArray(arguments),
-			i = 0,
-			events = this.__$$events__[eventName];
-		if (events && isArray(events)) {
-			for (i; i < events.length; i++) {
-				events[i].apply(null, args.slice(1));
+	}
+
+	$emit(_name,...args) {
+
+		let events = this.$$EVENTS[_name];
+		if (events && utils.isArray(events)) {
+			for (let i = 0; i < events.length; i++) {
+				events[i].apply(null, args);
 			}
 		}
 		return this;
-	},
-	$remove: function (eventName, fn) {
-		var events = this.__$$events__[eventName];
-		if (events && isArray(events)) {
+	}
+
+	$remove(_name, fn) {
+		let events = this.$$EVENTS[_name];
+		if (events && utils.isArray(events)) {
 			if (fn) {
 				for (var i = events.length - 1; i >= 0; i--) {
 					if (fn === events[i]) {
@@ -57,9 +53,9 @@ var Emitter = Class({
 					}
 				}
 			} else {
-				delete this.__$$events__[eventName];
+				delete this.$$EVENTS[_name];
 			}
 		}
 		return this;
 	}
-});
+}

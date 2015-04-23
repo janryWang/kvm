@@ -1,719 +1,1058 @@
-!(function(global){
+(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+module.exports = { "default": require("core-js/library/fn/object/assign"), __esModule: true };
+},{"core-js/library/fn/object/assign":9}],2:[function(require,module,exports){
+module.exports = { "default": require("core-js/library/fn/object/get-own-property-descriptor"), __esModule: true };
+},{"core-js/library/fn/object/get-own-property-descriptor":10}],3:[function(require,module,exports){
+module.exports = { "default": require("core-js/library/fn/promise"), __esModule: true };
+},{"core-js/library/fn/promise":11}],4:[function(require,module,exports){
+"use strict";
 
-
-var TYPES = "Function,String,Array,Object,Number,Boolean".split(",");
-var hasOwnProperty = Object.prototype.hasOwnProperty;
-
-
-for (var i = 0; i < TYPES.length; i++) {
-	eval('function is' + TYPES[i] + '(val){return _type(val) === "[object ' + TYPES[i] + ']"};');
-}
-
-function _type(val) {
-	return Object.prototype.toString.call(val);
-}
-
-/**
- * 判断某对象是否为引用类型
- * @param val
- * @returns {*}
- */
-
-function isReference(val) {
-	return isArray(val) || isObject(val);
-}
-
-/**
- * 判断某对象是否为非引用类型
- * @param val
- * @returns {boolean}
- */
-function isValue(val) {
-	return !isReference(val);
-}
-
-/**
- * 判断数组或对象是否为空
- * @param obj
- * @returns {boolean}
- */
-function isEmpty(obj) {
-	if (obj == null) return true;
-
-	if (obj.length > 0)    return false;
-	if (obj.length === 0)  return true;
-	for (var key in obj) {
-		if (hasOwnProperty.call(obj, key)) return false;
-	}
-
-	return true;
-}
-
-/**
- * 将类似数组的对象转换为数组
- * @returns {Array.<T>}
- */
-function toArray() {
-	var args;
-	args = [].slice.apply(arguments);
-	return [].slice.apply(args[0], args.slice(1));
-}
-
-/**
- * 获取对象的键数量
- * @param target
- * @returns {*}
- */
-function getKeyLength(target) {
-	if (isArray(target)) {
-		return target.length;
-	} else if (isObject(target)) {
-		return Object.keys(target).length;
-	} else {
-		return 0;
-	}
-}
-
-/**
- * 将数组去重
- * @param source
- * @returns {*}
- */
-function unique(source) {
-	for (var i = 0; i < source.length; ++i) {
-		for (var j = i + 1; j < source.length; ++j) {
-			if (source[i] === source[j])
-				source.splice(j--, 1);
-		}
-	}
-	return source;
-}
-
-
-/**
- * @params {fun} 需要绑定的函数
- * @params {context} 上下文
- * @returns {Function}
- */
-function bind(fun,context) {
-	var args = toArray(arguments);
-	args = args.slice(2);
-	return function () {
-		if (isFunction(fun)) return fun.apply(context, toArray(arguments).concat(args));
-	};
-}
-
-
-/**
- * 遍历对象
- * @param arr 需要遍历的对象，可以是哈希对象也可以是数组
- * @param callback 回调函数
- * @param faild 回调函数
- * @returns {Array} 索引数组
- */
-function forEach(arr, callback, faild) {
-	var index,
-		keys,
-		keys_length,
-		_results;
-	if (!isFunction(callback)) {
-		return;
-	}
-	if (isReference(arr)) {
-		keys = Object.keys(arr);
-		keys_length = keys.length;
-		index = 0;
-		_results = [];
-		if (keys_length == 0) {
-			if (isFunction(faild)) {
-				faild();
-			}
-		}
-		while (index < keys_length) {
-			if (callback(arr[keys[index]], keys[index]) === false) {
-				break;
-			}
-			_results.push(index++);
-		}
-		return _results;
-	} else {
-		if (isFunction(faild)) {
-			faild();
-		}
-	}
-}
-
-function guid() {
-	function s4() {
-		return Math.floor((1 + Math.random()) * 0x10000)
-			.toString(16)
-			.substring(1);
-	}
-
-	return s4() + s4() + '-' + s4() + '-' + s4() + '-' +
-		s4() + '-' + s4() + s4() + s4();
-}
-
-
-/**
- * 遍历任务队列
- * @param tasks 任务队列
- * @param iterator 迭代器
- * @param callback 终止回调
- */
-function eachTask() {
-	var args = toArray(arguments),
-		results = [],
-		tasks,
-		iterator,
-		callback;
-	if (!isArray(args[0])) return;
-	tasks = args[0];
-	if (args.length == 2) {
-		callback = args[1];
-	}
-	if (args.length > 2) {
-		iterator = args[1];
-		callback = args[2];
-	}
-	(function _eachTask(tasks, i) {
-		var task_length = tasks.length, next1, next2;
-		if (i < task_length) {
-			next1 = function () {
-				results = toArray(arguments);
-				if (i + 1 < task_length) {
-					_eachTask(tasks, i + 1);
-				}
-				else callback.apply(null, results);
-			};
-			next2 = function () {
-				results = toArray(arguments);
-				if (isFunction(iterator)) {
-					results.unshift(next1);
-					iterator.apply(null, results);
-				} else {
-					if (i + 1 < task_length) {
-						_eachTask(tasks, i + 1);
-					} else callback.apply(null, results);
-				}
-			};
-			if (isFunction(tasks[i])) {
-				results.unshift(next2);
-				tasks[i].apply(null, results);
-			} else {
-				if (isFunction(iterator)) {
-					results = [tasks[i], next1];
-					iterator.apply(null, results);
-				}
-			}
-		}
-	})(tasks, 0);
-}
-
-
-
-/**
- * 合并对象，可以深度合并也可以浅合并
- * target,[source_1,...source_n]
- * @returns {*}
- */
-function merge() {
-	var args,
-		args_length,
-		isDeep = false,
-		isCover = true,
-		callback;
-	args = toArray(arguments);
-	if (isBoolean(args[0])) {
-		isDeep = args[0];
-		args = args.slice(1);
-	}
-	if(isFunction(args[args.length - 1])){
-		callback = args[args.length - 1];
-		args.pop();
-	}
-	if(isBoolean(args[args.length - 1])){
-		isCover = args[args.length - 1];
-		args.pop();
-	}
-	args_length = args.length;
-	if (args_length < 2) {
-		return args[0];
-	}
-	if (args_length === 2) {
-		forEach(args[1],
-			function (item, name) {
-				if(isFunction(callback)) {
-					callback(name, args[0], args[1]);
-				}
-				if (args[1][name] !== undefined && args[1][name] !== null) {
-					if(!isCover) {
-						if (!args[0][name]) {
-							if(isReference(args[1][name])){
-								args[0][name] = args[0][name] || (isArray(args[1][name]) ? []:{});
-							}
-							if (isDeep && isReference(item)) {
-								merge(isDeep, args[0][name], item,isCover,callback);
-							} else {
-								args[0][name] = item;
-							}
-						}
-					} else {
-						if(isReference(args[1][name])){
-							args[0][name] = args[0][name] || (isArray(args[1][name]) ? []:{});
-						}
-						if (isDeep && isReference(item)) {
-							merge(isDeep, args[0][name], item,isCover,callback);
-						} else {
-							args[0][name] = item;
-						}
-					}
-				}
-			});
-		return args[0];
-	} else {
-		return merge(isDeep, args[0], merge.apply(null, [isDeep].concat(args.slice(1))));
-	}
-}
-
-
-/**
- * 复制对象，可以实现灵活的复制，某属性深度，某属性浅复制
- * @params {isDeep or target} 是否对整个对象进行深度复制，默认是浅复制，所以该参数的优先级相对于过滤器来说要高
- * @params {target} 目标对象
- * @params {filter function} 过滤器，返回false实现浅复制，true为深复制
- * @returns {*}
- */
-function copy() {
-	var args,
-		filter,
-		isDeep,
-		objType,
-		path,
-		res;
-	args = toArray(arguments);
-	isDeep = false;
-	if (isBoolean(args[0])) {
-		isDeep = args[0] === true ? true : false;
-		args = args.slice(1);
-	}
-	if (isValue(args[0])) {
-		return args[0];
-	}
-	filter = args[1] && isFunction(args[1]) ? args[1] : false;
-	path = args[2] && isString(args[2]) ? args[2] : "";
-	objType = isArray(args[0]) ? 1 : 2;
-	res = args[0].constructor();
-	forEach(args[0],
-		function (item, name) {
-			var filter_res,
-				_path;
-			_path = path ? (objType === 2 ? path + "." + name : path + "[" + name + "]") : name;
-			if (filter) {
-				filter_res = filter(item, name, _path);
-				if (isBoolean(filter_res)) {
-					if (filter_res) {
-						if (isDeep && isReference(item)) {
-							res[name] = copy(isDeep, item, filter, _path);
-							_path = path;
-						} else {
-							res[name] = item;
-						}
-					} else {
-						res[name] = item;
-					}
-				} else {
-					if (isDeep && isReference(item)) {
-						res[name] = copy(isDeep, item, filter, _path);
-						_path = path;
-					} else {
-						res[name] = item;
-					}
-				}
-			} else {
-				if (isDeep && isReference(item)) {
-					res[name] = copy(isDeep, item, filter, _path);
-					_path = path;
-				} else {
-					res[name] = item;
-				}
-			}
-		});
-	return res;
-}
-
-
-
-/**
- * 类工厂
- * @param proMethods 实例方法
- * @param staMethods 静态方法
- * @returns {*}
- * @constructor
- */
-function Class(proMethods, staMethods) {
-	if (proMethods && proMethods.constructor
-		&& isFunction(proMethods.constructor)
-		&& proMethods.constructor !== Object) {
-		_class = function () {
-			return proMethods.constructor.apply(this, toArray(arguments));
-		};
-		_class.toString = function () {
-			return proMethods.constructor.toString();
-		};
-	} else {
-		_class = function(){};
-	}
-	merge(_class.prototype, proMethods);
-	merge(_class, staMethods);
-	return _class;
-}
-
-/**
- * 继承原则，默认是子类会重写父类的方法和属性，子类会继承父类的一切方法和属性
- * 实例化对象可以通过$parent访问父对象，这样访问的父对象的属性方法不会被重写
- */
-Class.inherit = function () {
-	var args = toArray(arguments);
-
-	function construct(constructor, args) {
-		function F() {
-			return constructor.apply(this, args);
-		}
-
-		F.prototype = constructor.prototype;
-		return new F();
-	}
-
-	function _super() {
-		var instance = construct(parentClass, toArray(arguments));//实例化父类
-		merge(this, instance, false);//将父类的实例化对象与当前对象混合
-		this.$super = _super;
-		if (this.$parent && isArray(this.$parent)) {
-			this.$parent.push(instance);
-		} else
-			this.$parent = [instance];
-		return instance;
-	}
-
-	if (args.length == 2) {
-		var childClass = args[0], parentClass = args[1];
-		if (isFunction(childClass) && isFunction(parentClass)) {
-			merge(childClass.prototype, parentClass.prototype, false, function (name, target, source) {//默认是父类方法不能覆盖子类方法
-				if (source.$$isprotocol === true) {
-					if (isFunction(source[name]) && !isFunction(target[name])) {
-						throw "The subclass does not follow protocol";
-					}
-				}
-			});
-			childClass.prototype.$super = _super;
-			childClass.prototype.$parent = parentClass.prototype;
-			childClass.prototype.constructor = childClass;
-		}
-	} else if (args.length > 2) {
-		for (var i = 1; i < args.length; i++) {
-			Class.inherit(args[0], args[i]);
-		}
-	}
-
+exports["default"] = function (instance, Constructor) {
+  if (!(instance instanceof Constructor)) {
+    throw new TypeError("Cannot call a class as a function");
+  }
 };
 
-/**
- * 扩展类
- * @param _class
- * @param _prototype
- * @param _static
- */
+exports.__esModule = true;
+},{}],5:[function(require,module,exports){
+"use strict";
 
-Class.extend = function(_class,_prototype,_static){
-	if(isFunction(_class)) {
-		merge(_class.prototype, _prototype);
-		merge(_class, _static);
-	}
+exports["default"] = (function () {
+  function defineProperties(target, props) {
+    for (var i = 0; i < props.length; i++) {
+      var descriptor = props[i];
+      descriptor.enumerable = descriptor.enumerable || false;
+      descriptor.configurable = true;
+      if ("value" in descriptor) descriptor.writable = true;
+      Object.defineProperty(target, descriptor.key, descriptor);
+    }
+  }
+
+  return function (Constructor, protoProps, staticProps) {
+    if (protoProps) defineProperties(Constructor.prototype, protoProps);
+    if (staticProps) defineProperties(Constructor, staticProps);
+    return Constructor;
+  };
+})();
+
+exports.__esModule = true;
+},{}],6:[function(require,module,exports){
+"use strict";
+
+var _Object$getOwnPropertyDescriptor = require("babel-runtime/core-js/object/get-own-property-descriptor")["default"];
+
+exports["default"] = function get(_x, _x2, _x3) {
+  var _again = true;
+
+  _function: while (_again) {
+    desc = parent = getter = undefined;
+    _again = false;
+    var object = _x,
+        property = _x2,
+        receiver = _x3;
+
+    var desc = _Object$getOwnPropertyDescriptor(object, property);
+
+    if (desc === undefined) {
+      var parent = Object.getPrototypeOf(object);
+
+      if (parent === null) {
+        return undefined;
+      } else {
+        _x = parent;
+        _x2 = property;
+        _x3 = receiver;
+        _again = true;
+        continue _function;
+      }
+    } else if ("value" in desc) {
+      return desc.value;
+    } else {
+      var getter = desc.get;
+
+      if (getter === undefined) {
+        return undefined;
+      }
+
+      return getter.call(receiver);
+    }
+  }
 };
 
-/**
- * 通过协议来约定接口规范
- */
-Class.protocol = function (Interface) {
-	Interface.$$isprotocol = true;
-	return Class(Interface);
+exports.__esModule = true;
+},{"babel-runtime/core-js/object/get-own-property-descriptor":2}],7:[function(require,module,exports){
+"use strict";
+
+exports["default"] = function (subClass, superClass) {
+  if (typeof superClass !== "function" && superClass !== null) {
+    throw new TypeError("Super expression must either be null or a function, not " + typeof superClass);
+  }
+
+  subClass.prototype = Object.create(superClass && superClass.prototype, {
+    constructor: {
+      value: subClass,
+      enumerable: false,
+      writable: true,
+      configurable: true
+    }
+  });
+  if (superClass) subClass.__proto__ = superClass;
 };
 
+exports.__esModule = true;
+},{}],8:[function(require,module,exports){
+"use strict";
 
+exports["default"] = function (obj) {
+  return obj && obj.__esModule ? obj : {
+    "default": obj
+  };
+};
 
+exports.__esModule = true;
+},{}],9:[function(require,module,exports){
+require('../../modules/es6.object.assign');
+module.exports = require('../../modules/$').core.Object.assign;
+},{"../../modules/$":21,"../../modules/es6.object.assign":29}],10:[function(require,module,exports){
+require('../../modules/es6.object.statics-accept-primitives');
+module.exports = require('../../modules/$').core.Object.getOwnPropertyDescriptor;
+},{"../../modules/$":21,"../../modules/es6.object.statics-accept-primitives":30}],11:[function(require,module,exports){
+require('../modules/es6.string.iterator');
+require('../modules/web.dom.iterable');
+require('../modules/es6.promise');
+module.exports = require('../modules/$').core.Promise;
+},{"../modules/$":21,"../modules/es6.promise":31,"../modules/es6.string.iterator":32,"../modules/web.dom.iterable":33}],12:[function(require,module,exports){
+var $ = require('./$');
+function assert(condition, msg1, msg2){
+  if(!condition)throw TypeError(msg2 ? msg1 + msg2 : msg1);
+}
+assert.def = $.assertDefined;
+assert.fn = function(it){
+  if(!$.isFunction(it))throw TypeError(it + ' is not a function!');
+  return it;
+};
+assert.obj = function(it){
+  if(!$.isObject(it))throw TypeError(it + ' is not an object!');
+  return it;
+};
+assert.inst = function(it, Constructor, name){
+  if(!(it instanceof Constructor))throw TypeError(name + ": use the 'new' operator!");
+  return it;
+};
+module.exports = assert;
+},{"./$":21}],13:[function(require,module,exports){
+var $ = require('./$');
+// 19.1.2.1 Object.assign(target, source, ...)
+/*eslint-disable no-unused-vars */
+module.exports = Object.assign || function assign(target, source){
+/*eslint-enable no-unused-vars */
+  var T = Object($.assertDefined(target))
+    , l = arguments.length
+    , i = 1;
+  while(l > i){
+    var S      = $.ES5Object(arguments[i++])
+      , keys   = $.getKeys(S)
+      , length = keys.length
+      , j      = 0
+      , key;
+    while(length > j)T[key = keys[j++]] = S[key];
+  }
+  return T;
+};
+},{"./$":21}],14:[function(require,module,exports){
+var $        = require('./$')
+  , TAG      = require('./$.wks')('toStringTag')
+  , toString = {}.toString;
+function cof(it){
+  return toString.call(it).slice(8, -1);
+}
+cof.classof = function(it){
+  var O, T;
+  return it == undefined ? it === undefined ? 'Undefined' : 'Null'
+    : typeof (T = (O = Object(it))[TAG]) == 'string' ? T : cof(O);
+};
+cof.set = function(it, tag, stat){
+  if(it && !$.has(it = stat ? it : it.prototype, TAG))$.hide(it, TAG, tag);
+};
+module.exports = cof;
+},{"./$":21,"./$.wks":27}],15:[function(require,module,exports){
+// Optional / simple context binding
+var assertFunction = require('./$.assert').fn;
+module.exports = function(fn, that, length){
+  assertFunction(fn);
+  if(~length && that === undefined)return fn;
+  switch(length){
+    case 1: return function(a){
+      return fn.call(that, a);
+    };
+    case 2: return function(a, b){
+      return fn.call(that, a, b);
+    };
+    case 3: return function(a, b, c){
+      return fn.call(that, a, b, c);
+    };
+  } return function(/* ...args */){
+      return fn.apply(that, arguments);
+    };
+};
+},{"./$.assert":12}],16:[function(require,module,exports){
+var $          = require('./$')
+  , global     = $.g
+  , core       = $.core
+  , isFunction = $.isFunction;
+function ctx(fn, that){
+  return function(){
+    return fn.apply(that, arguments);
+  };
+}
+// type bitmap
+$def.F = 1;  // forced
+$def.G = 2;  // global
+$def.S = 4;  // static
+$def.P = 8;  // proto
+$def.B = 16; // bind
+$def.W = 32; // wrap
+function $def(type, name, source){
+  var key, own, out, exp
+    , isGlobal = type & $def.G
+    , target   = isGlobal ? global : type & $def.S
+        ? global[name] : (global[name] || {}).prototype
+    , exports  = isGlobal ? core : core[name] || (core[name] = {});
+  if(isGlobal)source = name;
+  for(key in source){
+    // contains in native
+    own = !(type & $def.F) && target && key in target;
+    if(own && key in exports)continue;
+    // export native or passed
+    out = own ? target[key] : source[key];
+    // prevent global pollution for namespaces
+    if(isGlobal && !isFunction(target[key]))exp = source[key];
+    // bind timers to global for call from export context
+    else if(type & $def.B && own)exp = ctx(out, global);
+    // wrap global constructors for prevent change them in library
+    else if(type & $def.W && target[key] == out)!function(C){
+      exp = function(param){
+        return this instanceof C ? new C(param) : C(param);
+      };
+      exp.prototype = C.prototype;
+    }(out);
+    else exp = type & $def.P && isFunction(out) ? ctx(Function.call, out) : out;
+    // export
+    $.hide(exports, key, exp);
+  }
+}
+module.exports = $def;
+},{"./$":21}],17:[function(require,module,exports){
+module.exports = function($){
+  $.FW   = false;
+  $.path = $.core;
+  return $;
+};
+},{}],18:[function(require,module,exports){
+// Fast apply
+// http://jsperf.lnkit.com/fast-apply/5
+module.exports = function(fn, args, that){
+  var un = that === undefined;
+  switch(args.length){
+    case 0: return un ? fn()
+                      : fn.call(that);
+    case 1: return un ? fn(args[0])
+                      : fn.call(that, args[0]);
+    case 2: return un ? fn(args[0], args[1])
+                      : fn.call(that, args[0], args[1]);
+    case 3: return un ? fn(args[0], args[1], args[2])
+                      : fn.call(that, args[0], args[1], args[2]);
+    case 4: return un ? fn(args[0], args[1], args[2], args[3])
+                      : fn.call(that, args[0], args[1], args[2], args[3]);
+    case 5: return un ? fn(args[0], args[1], args[2], args[3], args[4])
+                      : fn.call(that, args[0], args[1], args[2], args[3], args[4]);
+  } return              fn.apply(that, args);
+};
+},{}],19:[function(require,module,exports){
+var SYMBOL_ITERATOR = require('./$.wks')('iterator')
+  , SAFE_CLOSING    = false;
+try {
+  var riter = [7][SYMBOL_ITERATOR]();
+  riter['return'] = function(){ SAFE_CLOSING = true; };
+  Array.from(riter, function(){ throw 2; });
+} catch(e){ /* empty */ }
+module.exports = function(exec){
+  if(!SAFE_CLOSING)return false;
+  var safe = false;
+  try {
+    var arr  = [7]
+      , iter = arr[SYMBOL_ITERATOR]();
+    iter.next = function(){ safe = true; };
+    arr[SYMBOL_ITERATOR] = function(){ return iter; };
+    exec(arr);
+  } catch(e){ /* empty */ }
+  return safe;
+};
+},{"./$.wks":27}],20:[function(require,module,exports){
+'use strict';
+var $                 = require('./$')
+  , ctx               = require('./$.ctx')
+  , cof               = require('./$.cof')
+  , $def              = require('./$.def')
+  , assertObject      = require('./$.assert').obj
+  , SYMBOL_ITERATOR   = require('./$.wks')('iterator')
+  , FF_ITERATOR       = '@@iterator'
+  , Iterators         = {}
+  , IteratorPrototype = {};
+// Safari has byggy iterators w/o `next`
+var BUGGY = 'keys' in [] && !('next' in [].keys());
+// 25.1.2.1.1 %IteratorPrototype%[@@iterator]()
+setIterator(IteratorPrototype, $.that);
+function setIterator(O, value){
+  $.hide(O, SYMBOL_ITERATOR, value);
+  // Add iterator for FF iterator protocol
+  if(FF_ITERATOR in [])$.hide(O, FF_ITERATOR, value);
+}
+function defineIterator(Constructor, NAME, value, DEFAULT){
+  var proto = Constructor.prototype
+    , iter  = proto[SYMBOL_ITERATOR] || proto[FF_ITERATOR] || DEFAULT && proto[DEFAULT] || value;
+  // Define iterator
+  if($.FW)setIterator(proto, iter);
+  if(iter !== value){
+    var iterProto = $.getProto(iter.call(new Constructor));
+    // Set @@toStringTag to native iterators
+    cof.set(iterProto, NAME + ' Iterator', true);
+    // FF fix
+    if($.FW)$.has(proto, FF_ITERATOR) && setIterator(iterProto, $.that);
+  }
+  // Plug for library
+  Iterators[NAME] = iter;
+  // FF & v8 fix
+  Iterators[NAME + ' Iterator'] = $.that;
+  return iter;
+}
+function getIterator(it){
+  var Symbol  = $.g.Symbol
+    , ext     = it[Symbol && Symbol.iterator || FF_ITERATOR]
+    , getIter = ext || it[SYMBOL_ITERATOR] || Iterators[cof.classof(it)];
+  return assertObject(getIter.call(it));
+}
+function closeIterator(iterator){
+  var ret = iterator['return'];
+  if(ret !== undefined)assertObject(ret.call(iterator));
+}
+function stepCall(iterator, fn, value, entries){
+  try {
+    return entries ? fn(assertObject(value)[0], value[1]) : fn(value);
+  } catch(e){
+    closeIterator(iterator);
+    throw e;
+  }
+}
+var $iter = module.exports = {
+  BUGGY: BUGGY,
+  Iterators: Iterators,
+  prototype: IteratorPrototype,
+  step: function(done, value){
+    return {value: value, done: !!done};
+  },
+  stepCall: stepCall,
+  close: closeIterator,
+  is: function(it){
+    var O      = Object(it)
+      , Symbol = $.g.Symbol
+      , SYM    = Symbol && Symbol.iterator || FF_ITERATOR;
+    return SYM in O || SYMBOL_ITERATOR in O || $.has(Iterators, cof.classof(O));
+  },
+  get: getIterator,
+  set: setIterator,
+  create: function(Constructor, NAME, next, proto){
+    Constructor.prototype = $.create(proto || $iter.prototype, {next: $.desc(1, next)});
+    cof.set(Constructor, NAME + ' Iterator');
+  },
+  define: defineIterator,
+  std: function(Base, NAME, Constructor, next, DEFAULT, IS_SET, FORCE){
+    function createIter(kind){
+      return function(){
+        return new Constructor(this, kind);
+      };
+    }
+    $iter.create(Constructor, NAME, next);
+    var entries = createIter('key+value')
+      , values  = createIter('value')
+      , proto   = Base.prototype
+      , methods, key;
+    if(DEFAULT == 'value')values = defineIterator(Base, NAME, values, 'values');
+    else entries = defineIterator(Base, NAME, entries, 'entries');
+    if(DEFAULT){
+      methods = {
+        entries: entries,
+        keys:    IS_SET ? values : createIter('key'),
+        values:  values
+      };
+      $def($def.P + $def.F * BUGGY, NAME, methods);
+      if(FORCE)for(key in methods){
+        if(!(key in proto))$.hide(proto, key, methods[key]);
+      }
+    }
+  },
+  forOf: function(iterable, entries, fn, that){
+    var iterator = getIterator(iterable)
+      , f = ctx(fn, that, entries ? 2 : 1)
+      , step;
+    while(!(step = iterator.next()).done){
+      if(stepCall(iterator, f, step.value, entries) === false){
+        return closeIterator(iterator);
+      }
+    }
+  }
+};
+},{"./$":21,"./$.assert":12,"./$.cof":14,"./$.ctx":15,"./$.def":16,"./$.wks":27}],21:[function(require,module,exports){
+'use strict';
+var global = typeof self != 'undefined' ? self : Function('return this')()
+  , core   = {}
+  , defineProperty = Object.defineProperty
+  , hasOwnProperty = {}.hasOwnProperty
+  , ceil  = Math.ceil
+  , floor = Math.floor
+  , max   = Math.max
+  , min   = Math.min;
+// The engine works fine with descriptors? Thank's IE8 for his funny defineProperty.
+var DESC = !!function(){
+  try {
+    return defineProperty({}, 'a', {get: function(){ return 2; }}).a == 2;
+  } catch(e){ /* empty */ }
+}();
+var hide = createDefiner(1);
+// 7.1.4 ToInteger
+function toInteger(it){
+  return isNaN(it = +it) ? 0 : (it > 0 ? floor : ceil)(it);
+}
+function desc(bitmap, value){
+  return {
+    enumerable  : !(bitmap & 1),
+    configurable: !(bitmap & 2),
+    writable    : !(bitmap & 4),
+    value       : value
+  };
+}
+function simpleSet(object, key, value){
+  object[key] = value;
+  return object;
+}
+function createDefiner(bitmap){
+  return DESC ? function(object, key, value){
+    return $.setDesc(object, key, desc(bitmap, value)); // eslint-disable-line no-use-before-define
+  } : simpleSet;
+}
 
-/**
- * 事件分发器
- * @type {*}
- */
+function isObject(it){
+  return it !== null && (typeof it == 'object' || typeof it == 'function');
+}
+function isFunction(it){
+  return typeof it == 'function';
+}
+function assertDefined(it){
+  if(it == undefined)throw TypeError("Can't call method on  " + it);
+  return it;
+}
 
-var Emitter = Class({
-	constructor: function (events) {
-		if (events) {
-			this.__$$events__ = events;
-		} else {
-			this.__$$events__ = {};
-		}
-	},
-	$on: function (eventNames, fn) {
-		var _this = this;
-		eventNames = eventNames.split(",");
-		forEach(eventNames, function (eventName) {
-			if (isFunction(fn)) {
-				if (_this.__$$events__[eventName] && isArray(_this.__$$events__[eventName]))
-					_this.__$$events__[eventName].push(fn);
-				else _this.__$$events__[eventName] = [fn];
-			}
-		});
-		return this;
-	},
-	$one:function(eventNames,fn){
-		var _this = this;
-		eventNames = eventNames.split(",");
-		forEach(eventNames, function (eventName) {
-			if (isFunction(fn)) {
-				if (!_this.__$$events__[eventName])
-					_this.__$$events__[eventName] = [fn];
-			}
-		});
-		return this;
-	},
-	$emit: function (eventName) {
-		var args = toArray(arguments),
-			i = 0,
-			events = this.__$$events__[eventName];
-		if (events && isArray(events)) {
-			for (i; i < events.length; i++) {
-				events[i].apply(null, args.slice(1));
-			}
-		}
-		return this;
-	},
-	$remove: function (eventName, fn) {
-		var events = this.__$$events__[eventName];
-		if (events && isArray(events)) {
-			if (fn) {
-				for (var i = events.length - 1; i >= 0; i--) {
-					if (fn === events[i]) {
-						events.splice(i, 1);
-					}
-				}
-			} else {
-				delete this.__$$events__[eventName];
-			}
-		}
-		return this;
-	}
+var $ = module.exports = require('./$.fw')({
+  g: global,
+  core: core,
+  html: global.document && document.documentElement,
+  // http://jsperf.com/core-js-isobject
+  isObject:   isObject,
+  isFunction: isFunction,
+  it: function(it){
+    return it;
+  },
+  that: function(){
+    return this;
+  },
+  // 7.1.4 ToInteger
+  toInteger: toInteger,
+  // 7.1.15 ToLength
+  toLength: function(it){
+    return it > 0 ? min(toInteger(it), 0x1fffffffffffff) : 0; // pow(2, 53) - 1 == 9007199254740991
+  },
+  toIndex: function(index, length){
+    index = toInteger(index);
+    return index < 0 ? max(index + length, 0) : min(index, length);
+  },
+  has: function(it, key){
+    return hasOwnProperty.call(it, key);
+  },
+  create:     Object.create,
+  getProto:   Object.getPrototypeOf,
+  DESC:       DESC,
+  desc:       desc,
+  getDesc:    Object.getOwnPropertyDescriptor,
+  setDesc:    defineProperty,
+  getKeys:    Object.keys,
+  getNames:   Object.getOwnPropertyNames,
+  getSymbols: Object.getOwnPropertySymbols,
+  // Dummy, fix for not array-like ES3 string in es5 module
+  assertDefined: assertDefined,
+  ES5Object: Object,
+  toObject: function(it){
+    return $.ES5Object(assertDefined(it));
+  },
+  hide: hide,
+  def: createDefiner(0),
+  set: global.Symbol ? simpleSet : hide,
+  mix: function(target, src){
+    for(var key in src)hide(target, key, src[key]);
+    return target;
+  },
+  each: [].forEach
+});
+if(typeof __e != 'undefined')__e = core;
+if(typeof __g != 'undefined')__g = global;
+},{"./$.fw":17}],22:[function(require,module,exports){
+var $ = require('./$');
+module.exports = function(C){
+  if($.DESC && $.FW)$.setDesc(C, require('./$.wks')('species'), {
+    configurable: true,
+    get: $.that
+  });
+};
+},{"./$":21,"./$.wks":27}],23:[function(require,module,exports){
+'use strict';
+// true  -> String#at
+// false -> String#codePointAt
+var $ = require('./$');
+module.exports = function(TO_STRING){
+  return function(pos){
+    var s = String($.assertDefined(this))
+      , i = $.toInteger(pos)
+      , l = s.length
+      , a, b;
+    if(i < 0 || i >= l)return TO_STRING ? '' : undefined;
+    a = s.charCodeAt(i);
+    return a < 0xd800 || a > 0xdbff || i + 1 === l
+      || (b = s.charCodeAt(i + 1)) < 0xdc00 || b > 0xdfff
+        ? TO_STRING ? s.charAt(i) : a
+        : TO_STRING ? s.slice(i, i + 2) : (a - 0xd800 << 10) + (b - 0xdc00) + 0x10000;
+  };
+};
+},{"./$":21}],24:[function(require,module,exports){
+'use strict';
+var $      = require('./$')
+  , ctx    = require('./$.ctx')
+  , cof    = require('./$.cof')
+  , invoke = require('./$.invoke')
+  , global             = $.g
+  , isFunction         = $.isFunction
+  , html               = $.html
+  , document           = global.document
+  , process            = global.process
+  , setTask            = global.setImmediate
+  , clearTask          = global.clearImmediate
+  , postMessage        = global.postMessage
+  , addEventListener   = global.addEventListener
+  , MessageChannel     = global.MessageChannel
+  , counter            = 0
+  , queue              = {}
+  , ONREADYSTATECHANGE = 'onreadystatechange'
+  , defer, channel, port;
+function run(){
+  var id = +this;
+  if($.has(queue, id)){
+    var fn = queue[id];
+    delete queue[id];
+    fn();
+  }
+}
+function listner(event){
+  run.call(event.data);
+}
+// Node.js 0.9+ & IE10+ has setImmediate, otherwise:
+if(!isFunction(setTask) || !isFunction(clearTask)){
+  setTask = function(fn){
+    var args = [], i = 1;
+    while(arguments.length > i)args.push(arguments[i++]);
+    queue[++counter] = function(){
+      invoke(isFunction(fn) ? fn : Function(fn), args);
+    };
+    defer(counter);
+    return counter;
+  };
+  clearTask = function(id){
+    delete queue[id];
+  };
+  // Node.js 0.8-
+  if(cof(process) == 'process'){
+    defer = function(id){
+      process.nextTick(ctx(run, id, 1));
+    };
+  // Modern browsers, skip implementation for WebWorkers
+  // IE8 has postMessage, but it's sync & typeof its postMessage is object
+  } else if(addEventListener && isFunction(postMessage) && !global.importScripts){
+    defer = function(id){
+      postMessage(id, '*');
+    };
+    addEventListener('message', listner, false);
+  // WebWorkers
+  } else if(isFunction(MessageChannel)){
+    channel = new MessageChannel;
+    port    = channel.port2;
+    channel.port1.onmessage = listner;
+    defer = ctx(port.postMessage, port, 1);
+  // IE8-
+  } else if(document && ONREADYSTATECHANGE in document.createElement('script')){
+    defer = function(id){
+      html.appendChild(document.createElement('script'))[ONREADYSTATECHANGE] = function(){
+        html.removeChild(this);
+        run.call(id);
+      };
+    };
+  // Rest old browsers
+  } else {
+    defer = function(id){
+      setTimeout(ctx(run, id, 1), 0);
+    };
+  }
+}
+module.exports = {
+  set:   setTask,
+  clear: clearTask
+};
+},{"./$":21,"./$.cof":14,"./$.ctx":15,"./$.invoke":18}],25:[function(require,module,exports){
+var sid = 0;
+function uid(key){
+  return 'Symbol(' + key + ')_' + (++sid + Math.random()).toString(36);
+}
+uid.safe = require('./$').g.Symbol || uid;
+module.exports = uid;
+},{"./$":21}],26:[function(require,module,exports){
+// 22.1.3.31 Array.prototype[@@unscopables]
+var $           = require('./$')
+  , UNSCOPABLES = require('./$.wks')('unscopables');
+if($.FW && !(UNSCOPABLES in []))$.hide(Array.prototype, UNSCOPABLES, {});
+module.exports = function(key){
+  if($.FW)[][UNSCOPABLES][key] = true;
+};
+},{"./$":21,"./$.wks":27}],27:[function(require,module,exports){
+var global = require('./$').g
+  , store  = {};
+module.exports = function(name){
+  return store[name] || (store[name] =
+    global.Symbol && global.Symbol[name] || require('./$.uid').safe('Symbol.' + name));
+};
+},{"./$":21,"./$.uid":25}],28:[function(require,module,exports){
+var $          = require('./$')
+  , setUnscope = require('./$.unscope')
+  , ITER       = require('./$.uid').safe('iter')
+  , $iter      = require('./$.iter')
+  , step       = $iter.step
+  , Iterators  = $iter.Iterators;
+
+// 22.1.3.4 Array.prototype.entries()
+// 22.1.3.13 Array.prototype.keys()
+// 22.1.3.29 Array.prototype.values()
+// 22.1.3.30 Array.prototype[@@iterator]()
+$iter.std(Array, 'Array', function(iterated, kind){
+  $.set(this, ITER, {o: $.toObject(iterated), i: 0, k: kind});
+// 22.1.5.2.1 %ArrayIteratorPrototype%.next()
+}, function(){
+  var iter  = this[ITER]
+    , O     = iter.o
+    , kind  = iter.k
+    , index = iter.i++;
+  if(!O || index >= O.length){
+    iter.o = undefined;
+    return step(1);
+  }
+  if(kind == 'key'  )return step(0, index);
+  if(kind == 'value')return step(0, O[index]);
+  return step(0, [index, O[index]]);
+}, 'value');
+
+// argumentsList[@@iterator] is %ArrayProto_values% (9.4.4.6, 9.4.4.7)
+Iterators.Arguments = Iterators.Array;
+
+setUnscope('keys');
+setUnscope('values');
+setUnscope('entries');
+},{"./$":21,"./$.iter":20,"./$.uid":25,"./$.unscope":26}],29:[function(require,module,exports){
+// 19.1.3.1 Object.assign(target, source)
+var $def = require('./$.def');
+$def($def.S, 'Object', {assign: require('./$.assign')});
+},{"./$.assign":13,"./$.def":16}],30:[function(require,module,exports){
+var $        = require('./$')
+  , $def     = require('./$.def')
+  , isObject = $.isObject
+  , toObject = $.toObject;
+function wrapObjectMethod(METHOD, MODE){
+  var fn  = ($.core.Object || {})[METHOD] || Object[METHOD]
+    , f   = 0
+    , o   = {};
+  o[METHOD] = MODE == 1 ? function(it){
+    return isObject(it) ? fn(it) : it;
+  } : MODE == 2 ? function(it){
+    return isObject(it) ? fn(it) : true;
+  } : MODE == 3 ? function(it){
+    return isObject(it) ? fn(it) : false;
+  } : MODE == 4 ? function getOwnPropertyDescriptor(it, key){
+    return fn(toObject(it), key);
+  } : MODE == 5 ? function getPrototypeOf(it){
+    return fn(Object($.assertDefined(it)));
+  } : function(it){
+    return fn(toObject(it));
+  };
+  try {
+    fn('z');
+  } catch(e){
+    f = 1;
+  }
+  $def($def.S + $def.F * f, 'Object', o);
+}
+wrapObjectMethod('freeze', 1);
+wrapObjectMethod('seal', 1);
+wrapObjectMethod('preventExtensions', 1);
+wrapObjectMethod('isFrozen', 2);
+wrapObjectMethod('isSealed', 2);
+wrapObjectMethod('isExtensible', 3);
+wrapObjectMethod('getOwnPropertyDescriptor', 4);
+wrapObjectMethod('getPrototypeOf', 5);
+wrapObjectMethod('keys');
+wrapObjectMethod('getOwnPropertyNames');
+},{"./$":21,"./$.def":16}],31:[function(require,module,exports){
+'use strict';
+var $       = require('./$')
+  , ctx     = require('./$.ctx')
+  , cof     = require('./$.cof')
+  , $def    = require('./$.def')
+  , assert  = require('./$.assert')
+  , $iter   = require('./$.iter')
+  , SPECIES = require('./$.wks')('species')
+  , RECORD  = require('./$.uid').safe('record')
+  , forOf   = $iter.forOf
+  , PROMISE = 'Promise'
+  , global  = $.g
+  , process = global.process
+  , asap    = process && process.nextTick || require('./$.task').set
+  , P       = global[PROMISE]
+  , Base    = P
+  , isFunction     = $.isFunction
+  , isObject       = $.isObject
+  , assertFunction = assert.fn
+  , assertObject   = assert.obj
+  , test;
+
+// helpers
+function getConstructor(C){
+  var S = assertObject(C)[SPECIES];
+  return S != undefined ? S : C;
+}
+function isThenable(it){
+  var then;
+  if(isObject(it))then = it.then;
+  return isFunction(then) ? then : false;
+}
+function isUnhandled(promise){
+  var record = promise[RECORD]
+    , chain  = record.c
+    , i      = 0
+    , react;
+  if(record.h)return false;
+  while(chain.length > i){
+    react = chain[i++];
+    if(react.fail || !isUnhandled(react.P))return false;
+  } return true;
+}
+function notify(record, isReject){
+  var chain = record.c;
+  if(isReject || chain.length)asap(function(){
+    var promise = record.p
+      , value   = record.v
+      , ok      = record.s == 1
+      , i       = 0;
+    if(isReject && isUnhandled(promise)){
+      setTimeout(function(){
+        if(isUnhandled(promise)){
+          if(cof(process) == 'process'){
+            process.emit('unhandledRejection', value, promise);
+          } else if(global.console && isFunction(console.error)){
+            console.error('Unhandled promise rejection', value);
+          }
+        }
+      }, 1e3);
+    } else while(chain.length > i)!function(react){
+      var cb = ok ? react.ok : react.fail
+        , ret, then;
+      try {
+        if(cb){
+          if(!ok)record.h = true;
+          ret = cb === true ? value : cb(value);
+          if(ret === react.P){
+            react.rej(TypeError(PROMISE + '-chain cycle'));
+          } else if(then = isThenable(ret)){
+            then.call(ret, react.res, react.rej);
+          } else react.res(ret);
+        } else react.rej(value);
+      } catch(err){
+        react.rej(err);
+      }
+    }(chain[i++]);
+    chain.length = 0;
+  });
+}
+function $reject(value){
+  var record = this;
+  if(record.d)return;
+  record.d = true;
+  record = record.r || record; // unwrap
+  record.v = value;
+  record.s = 2;
+  notify(record, true);
+}
+function $resolve(value){
+  var record = this
+    , then, wrapper;
+  if(record.d)return;
+  record.d = true;
+  record = record.r || record; // unwrap
+  try {
+    if(then = isThenable(value)){
+      wrapper = {r: record, d: false}; // wrap
+      then.call(value, ctx($resolve, wrapper, 1), ctx($reject, wrapper, 1));
+    } else {
+      record.v = value;
+      record.s = 1;
+      notify(record);
+    }
+  } catch(err){
+    $reject.call(wrapper || {r: record, d: false}, err); // wrap
+  }
+}
+
+// constructor polyfill
+if(!(isFunction(P) && isFunction(P.resolve) && P.resolve(test = new P(function(){})) == test)){
+  // 25.4.3.1 Promise(executor)
+  P = function Promise(executor){
+    assertFunction(executor);
+    var record = {
+      p: assert.inst(this, P, PROMISE),       // <- promise
+      c: [],                                  // <- chain
+      s: 0,                                   // <- state
+      d: false,                               // <- done
+      v: undefined,                           // <- value
+      h: false                                // <- handled rejection
+    };
+    $.hide(this, RECORD, record);
+    try {
+      executor(ctx($resolve, record, 1), ctx($reject, record, 1));
+    } catch(err){
+      $reject.call(record, err);
+    }
+  };
+  $.mix(P.prototype, {
+    // 25.4.5.3 Promise.prototype.then(onFulfilled, onRejected)
+    then: function then(onFulfilled, onRejected){
+      var S = assertObject(assertObject(this).constructor)[SPECIES];
+      var react = {
+        ok:   isFunction(onFulfilled) ? onFulfilled : true,
+        fail: isFunction(onRejected)  ? onRejected  : false
+      };
+      var promise = react.P = new (S != undefined ? S : P)(function(res, rej){
+        react.res = assertFunction(res);
+        react.rej = assertFunction(rej);
+      });
+      var record = this[RECORD];
+      record.c.push(react);
+      record.s && notify(record);
+      return promise;
+    },
+    // 25.4.5.1 Promise.prototype.catch(onRejected)
+    'catch': function(onRejected){
+      return this.then(undefined, onRejected);
+    }
+  });
+}
+
+// export
+$def($def.G + $def.W + $def.F * (P != Base), {Promise: P});
+cof.set(P, PROMISE);
+require('./$.species')(P);
+
+// statics
+$def($def.S, PROMISE, {
+  // 25.4.4.5 Promise.reject(r)
+  reject: function reject(r){
+    return new (getConstructor(this))(function(res, rej){
+      rej(r);
+    });
+  },
+  // 25.4.4.6 Promise.resolve(x)
+  resolve: function resolve(x){
+    return isObject(x) && RECORD in x && $.getProto(x) === this.prototype
+      ? x : new (getConstructor(this))(function(res){
+        res(x);
+      });
+  }
+});
+$def($def.S + $def.F * !require('./$.iter-detect')(function(iter){
+  P.all(iter)['catch'](function(){});
+}), PROMISE, {
+  // 25.4.4.1 Promise.all(iterable)
+  all: function all(iterable){
+    var C      = getConstructor(this)
+      , values = [];
+    return new C(function(res, rej){
+      forOf(iterable, false, values.push, values);
+      var remaining = values.length
+        , results   = Array(remaining);
+      if(remaining)$.each.call(values, function(promise, index){
+        C.resolve(promise).then(function(value){
+          results[index] = value;
+          --remaining || res(results);
+        }, rej);
+      });
+      else res(results);
+    });
+  },
+  // 25.4.4.4 Promise.race(iterable)
+  race: function race(iterable){
+    var C = getConstructor(this);
+    return new C(function(res, rej){
+      forOf(iterable, false, function(promise){
+        C.resolve(promise).then(res, rej);
+      });
+    });
+  }
+});
+},{"./$":21,"./$.assert":12,"./$.cof":14,"./$.ctx":15,"./$.def":16,"./$.iter":20,"./$.iter-detect":19,"./$.species":22,"./$.task":24,"./$.uid":25,"./$.wks":27}],32:[function(require,module,exports){
+var set   = require('./$').set
+  , at    = require('./$.string-at')(true)
+  , ITER  = require('./$.uid').safe('iter')
+  , $iter = require('./$.iter')
+  , step  = $iter.step;
+
+// 21.1.3.27 String.prototype[@@iterator]()
+$iter.std(String, 'String', function(iterated){
+  set(this, ITER, {o: String(iterated), i: 0});
+// 21.1.5.2.1 %StringIteratorPrototype%.next()
+}, function(){
+  var iter  = this[ITER]
+    , O     = iter.o
+    , index = iter.i
+    , point;
+  if(index >= O.length)return step(1);
+  point = at.call(O, index);
+  iter.i += point.length;
+  return step(0, point);
+});
+},{"./$":21,"./$.iter":20,"./$.string-at":23,"./$.uid":25}],33:[function(require,module,exports){
+require('./es6.array.iterator');
+var $           = require('./$')
+  , Iterators   = require('./$.iter').Iterators
+  , ITERATOR    = require('./$.wks')('iterator')
+  , ArrayValues = Iterators.Array
+  , NodeList    = $.g.NodeList;
+if($.FW && NodeList && !(ITERATOR in NodeList.prototype)){
+  $.hide(NodeList.prototype, ITERATOR, ArrayValues);
+}
+Iterators.NodeList = ArrayValues;
+},{"./$":21,"./$.iter":20,"./$.wks":27,"./es6.array.iterator":28}],34:[function(require,module,exports){
+"use strict";
+
+var _inherits = require("babel-runtime/helpers/inherits")["default"];
+
+var _get = require("babel-runtime/helpers/get")["default"];
+
+var _createClass = require("babel-runtime/helpers/create-class")["default"];
+
+var _classCallCheck = require("babel-runtime/helpers/class-call-check")["default"];
+
+var _Promise = require("babel-runtime/core-js/promise")["default"];
+
+var _interopRequireWildcard = require("babel-runtime/helpers/interop-require-wildcard")["default"];
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
 });
 
-/**
- * 模块管理系统
- */
+var _utils = require("./utils");
 
-var Manager = (function () {
+var _utils2 = _interopRequireWildcard(_utils);
 
-	var Hook = new Emitter();
+var _Emitter5 = require("./emitter");
 
-	/**
-	 * 管理器公共数据存储域
-	 */
-	var Data = {
-		baseUrl:window.location.href,
-		vars:{},
-		packages:{},
-		alias:{},
-		shims:{}
-	};
+var _Emitter6 = _interopRequireWildcard(_Emitter5);
 
-	/**
-	 * 模块缓存器
-	 */
-	var ModuleCache = {
-		MODULES: {},
-		add: function (module) {
-			var path = module.path;
-			var mapId = module.path.id || module.path.uri;
-			var driver = _.Driver.getDriver(path);
-			if(!this.MODULES[mapId]){
-				this.MODULES[mapId] = module;
-				driver && driver.$emit("loaded",module);
-			}
-			return this.MODULES[mapId];
-		},
-		//寻找缓存模块，通过id,或uri来寻找
-		get: function (path) {
-			return this.MODULES[path.id || path.uri] || this.MODULES[path.id] || this.MODULES[path.uri];
+var Hook = new _Emitter6["default"]();
+
+var Data = {
+	baseUrl: "",
+	vars: {},
+	packages: {},
+	alias: {},
+	shims: {}
+};
+
+var ModuleCache = {
+	MODULES: {},
+	insert: function insert(module) {
+		var path = module.path;
+		var mapId = module.path.id || module.path.uri;
+		var driver = Driver.getDriver(path);
+		if (!this.MODULES[mapId]) {
+			this.MODULES[mapId] = module;
+			driver && driver.$emit("loaded", module);
 		}
-	};
+		return this.MODULES[mapId];
+	},
+	find: function find(path) {
+		return this.MODULES[path.id || path.uri] || this.MODULES[path.id] || this.MODULES[path.uri];
+	}
+};
 
-	var Container = {
-		Module: Class({
-			constructor: function () {
-				this.$super();
-				this._init.apply(this, toArray(arguments));
-			},
-			_init: function (meta) {
-				merge(this, {
-					path: null,
-					depPaths: [],
-					factory: null,
-					injectors: {},
-					installed: false,
-					module: {
-						exports: null
-					}
-				}, meta);
-				Hook.$emit("MODULE_PARSER", this);
-			},
-			_collectDeps: function () {
-				var that = this,
-					dependencies = [],
-					injector;
-				return _.Request.fetch(this, this.depPaths)
-					.then(function (modules) {
-						return new Promise(function (resolve) {
-							forEach(that.depPaths, function (path, index) {
-								injector = path.getMap(modules);
-								if (injector) {
-									dependencies[index] = injector.invoke();
-									if (dependencies.length == that.depPaths.length) {
-										resolve(Promise.all(dependencies));
-									}
-								}
-							}, function () {
-								resolve(Promise.all([]));
-							});
-						});
-					});
-			},
+var Request = (function (_Emitter) {
+	function Request(sender, reqs, callback) {
+		_classCallCheck(this, Request);
 
-			_inject: function () {
-				var that = this;
-				return this._collectDeps().then(function (dependencies) {
-					var instance = that.factory.apply(null, dependencies);
-					if (that.module.exports) {
-						instance = that.module.exports;
-					} else {
-						that.module.exports = instance;
-					}
-					that.installed = true;
-					return instance;
-				});
-			},
-			//寻找注入模块，通过id来索引
-			getInjector: function (path) {
-				var injector = this.injectors[path.id];
-				if (injector) {
-					return _.Module.createModule(path.id, injector);
-				}
-			},
+		_get(Object.getPrototypeOf(Request.prototype), "constructor", this).call(this);
+		this.sender = sender;
+		this.reqs = _utils2["default"].isArray(reqs) ? reqs : [reqs];
+		this.drivers = [];
+		this.results = [];
+		this.callback = callback;
+		this._parseReqs();
+		this.send();
+	}
 
-			invoke: function () {
-				var that = this;
-				return new Promise(function (resolve) {
-					if (that.installed) {
-						resolve(Promise.resolve(that.module.exports));
-					} else if (that.factory) {
-						resolve(Promise.resolve(that._inject()));
-					} else {
-						if (that.path && !that.factory) {
-							resolve(_.Request.fetch(that, that.path).then(function (modules) {
-								return Promise.resolve(modules[0]._inject());
-							}));
-						} else {
-							throw new Error('模块不符合规范!');
-						}
-					}
-				});
-			}
+	_inherits(Request, _Emitter);
 
-		}, {
-			createModule: function () {
-				return new _.Module(_.Module.parseMeta.apply(null, toArray(arguments)));
-			},
-			parseMeta: function () {
-				var meta = {},
-					params = toArray(arguments),
-					auto_path = false;
-				if (isBoolean(params[0])) {
-					auto_path = params[0];
-					params = params.slice(1);
-				}
-				forEach(params, function (param) {
-					if (isFunction(param)) {
-						meta.factory = param;
-					} else if (isArray(param)) {
-						if (isFunction(param[param.length - 1])) {
-							meta.factory = param[param.length - 1];
-							meta.depPaths = param.slice(0, param.length - 1).map(function (id) {
-								return new _.Path(id);
-							});
-						} else {
-							meta.depPaths = param.map(function (id) {
-								return new _.Path(id);
-							});
-						}
-					} else if (isString(param)) {
-						meta.path = new _.Path(param);
-					} else if (isObject(param)) {
-						meta.injectors = param;
-					}
-
-				});
-				if (!meta.path && auto_path) {
-					meta.path = new _.Path();
-				}
-				return meta;
-
-			},
-			registerModuleParser: function (method) {
-				if (!isFunction(method)) return;
-				Hook.$on("MODULE_PARSER", function (that) {
-					method.call(that);
-				});
-			}
-		}),
-
-		Request: Class({
-			constructor: function () {
-				this.$super();
-				this._init.apply(this, toArray(arguments));
-			},
-			_init: function (sender, reqs, callback) {
-				this.sender = sender;
-				this.reqs = isArray(reqs) ? reqs : [reqs];
-				this.drivers = [];
-				this.results = [];
-				this.callback = callback;
-				this._parseReqs();
-				this.send();
-			},
-
-			_createDriver: function (path) {
-				var driver = _.Driver.getDriver(path),
-					that = this;
-				if (!driver) {
-					driver = new _.Driver(path);
-					driver.beforeLoad();
-					if (!driver.module) {
-						this.drivers.push(driver);
-					} else {
-						that._done(driver.module);
-					}
-				}
-				if(!driver.module) {
-					driver.$on("loaded", function (module) {
-						driver.module = module;
-						that._done(module);
-					});
+	_createClass(Request, [{
+		key: "_createDriver",
+		value: function _createDriver(path) {
+			var driver = Driver.getDriver(path),
+			    that = this;
+			if (!driver) {
+				driver = new Driver(path);
+				driver.beforeLoad();
+				if (!driver.module) {
+					this.drivers.push(driver);
 				} else {
 					that._done(driver.module);
 				}
-			},
-			_parseReqs: function () {
-				var that = this, module;
-				forEach(this.reqs, function (path) {
+			}
+			if (!driver.module) {
+				driver.$on("loaded", function (module) {
+					driver.module = module;
+					that._done(module);
+				});
+			} else {
+				that._done(driver.module);
+			}
+		}
+	}, {
+		key: "_parseReqs",
+		value: function _parseReqs() {
+			var that = this,
+			    module = undefined;
+			this.reqs = this.reqs.filter(function (req) {
+				return !!req;
+			});
+			if (this.reqs.length > 0) {
+				this.reqs.forEach(function (path) {
 					module = that.sender.getInjector(path);
 					module = module || path.getModule();
 					if (module) {
@@ -721,1390 +1060,850 @@ var Manager = (function () {
 					} else {
 						that._createDriver(path);
 					}
-				}, function () {
-					that.callback([]);
 				});
-			},
-			send: function () {
-				forEach(this.drivers, function (driver) {
-					driver.load();
-				});
-			},
-			_checkDone: function () {
-				return this.reqs.length == this.results.length;
-			},
-			_done: function (module) {
-				this.results.push(module);
-				if (this._checkDone()) {
-					if (isFunction(this.callback)) {
-						this.callback(this.results);
-					}
-				}
-			}
-		}, {
-			fetch: function (sender, paths) {
-				paths = isArray(paths) ? paths : [paths];
-				return new Promise(function (resolve) {
-					new _.Request(sender, paths, function (modules) {
-						resolve(modules);
-					});
-				});
-			}
-		}),
-
-		Driver: Class({
-			constructor: function () {
-				this.$super();
-				this._init.apply(this, toArray(arguments));
-			},
-			_init: function (path) {
-				this.path = path;
-				this.module = null;
-				if (!_.Driver.getDriver(path)) {
-					_.Driver.addDriver(this);
-				}
-			},
-			loaded: function (err, res) {
-				var path = this.path;
-				if (path.ext != "js") {
-					Dectorator.define(path.id, function () {
-						return res;
-					});
-				} else {
-					Hook.$emit("DRIVER_LOADED", this,err,res);
-				}
-			},
-			beforeLoad: function () {
-				Hook.$emit("DRIVER_BEFORE_LOAD", this);
-			},
-			load: function () {
-				var path = this.path;
-				if (path.ext != "js") {
-					Hook.$emit("DRIVER_LOADER_" + path.ext.toLocaleUpperCase(), this);
-				} else {
-					this._loadJS(path.uri, bind(this.loaded, this));
-				}
-			},
-			_loadJS: function (url, callback) {
-				var doc = document;
-				var head = doc.head || doc.getElementsByTagName("head")[0] || doc.documentElement;
-				var baseElement = head.getElementsByTagName("base")[0];
-				var node = doc.createElement("script");
-				node.async = true;
-				node.src = url;
-				addOnload(node, callback);
-
-				baseElement ?
-					head.insertBefore(node, baseElement) :
-					head.appendChild(node);
-
-				function addOnload(node, callback) {
-					var supportOnload = "onload" in node;
-
-					if (supportOnload) {
-						node.onload = onload;
-						node.onerror = function () {
-							onload(true)
-						}
-					}
-					else {
-						node.onreadystatechange = function () {
-							if (/loaded|complete/.test(node.readyState)) {
-								onload()
-							}
-						}
-					}
-
-					function onload(e) {
-						// Ensure only run once and handle memory leak in IE
-						node.onload = node.onerror = node.onreadystatechange = null;
-
-						// Remove the script to reduce memory leak
-						if (Manager.data("debug")) {
-							head.removeChild(node);
-						}
-
-						// Dereference the node
-						node = null;
-
-						callback && callback(e);
-					}
-				}
-			}
-		}, {
-			DRIVERS: {},
-			//寻找驱动，通过uri来索引
-			getDriver: function (path) {
-				return this.DRIVERS[path.uri];
-			},
-			addDriver: function (driver) {
-				this.DRIVERS[driver.path.uri] = driver;
-			},
-			registerDriverLoaded: function (method) {
-				if (!isFunction(method)) return;
-				Hook.$on("DRIVER_LOADED", function (that) {
-					method.call(that);
-				});
-			},
-			registerDriverLoader: function (ext, method) {
-				if (!isFunction(method)) return;
-				ext = ext.trim();
-				ext = ext.toUpperCase();
-				Hook.$one("DRIVER_LOADER_" + ext, function (that) {
-					method.call(that, that.path.uri, bind(that.loaded, that));
-				});
-			},
-			registerDriverBeforeLoad: function (method,err,res) {
-				if (!isFunction(method)) return;
-				Hook.$on("DRIVER_BEFORE_LOAD", function (that) {
-					method.call(that,err,res);
-				});
-			}
-		}),
-
-
-		Path: Class({
-			constructor: function () {
-				this.$super();
-				this._init.apply(this, toArray(arguments));
-			},
-			_init: function (id, baseUrl) {
-				this.baseUrl = baseUrl || Data.baseUrl;
-				this.id = id || "";
-				this._initId();
-				this._maper();
-				this._parser();
-				this._initUri();
-			},
-
-			__EXTS__: ["js", "css", "json", "jsonp", "tpl", "html"],
-
-			_initId: function () {
-				if (!this.id) return;
-				var parser = document.createElement('a');
-				parser.href = this.id;
-				this.query = this.getQuery(parser.search);
-				this.hash = parser.hash.replace("#", "");
-				this.id = this.id.replace(/(#|\?).*/, "");
-			},
-
-			_initUri: function () {
-				this.baseUrl = this.baseUrl.replace(/\/$/, "") + "/";
-				this.uri =  this.uri ? this.resolvePath(this.baseUrl, this.uri) : this.id ? this.resolvePath(this.baseUrl, this.id) : this.getCurrentScript();
-				this._initExt();
-			},
-
-			_initExt: function () {
-				var ext = this.uri.match(/\.(\w+)$/);
-				if (ext && ext[1]) {
-					ext = ext[1].toLocaleLowerCase();
-					if (this.__EXTS__.indexOf(ext) != -1) {
-						this.ext = ext;
-					} else {
-						this.$emit("FILE_EXTS_PARSER", this);
-						if (!this.__EXTS__.indexOf(this.ext)){
-							this.ext = "js";
-						}
-					}
-				} else {
-					this.ext = "js";
-					this.uri += ".js";
-				}
-			},
-
-			_maper:function(){
-				if (!this.id) return;
-				Hook.$emit("PATH_MAPER", this);
-			},
-
-
-			_parser: function () {
-				if (!this.id) return;
-				this._parseVars();
-				Hook.$emit("PATH_PARSER", this);
-
-			},
-
-			_parseVars: function () {
-				this.baseUrl = this.template(this.baseUrl);
-				this.id = this.template(this.id);
-			},
-
-			getModule: function () {
-				return ModuleCache.get(this);
-			},
-
-			equal: function (path) {
-				return (this.id && this.id == path.id) || (this.uri && this.uri == path.uri);
-			},
-
-			getMap: function (obj) {
-				var result, that = this;
-				if (isArray(obj)) {
-					forEach(obj, function (item) {
-						if (item.equal && item.equal(that) || (item.path && item.path.equal(that))) {
-							result = item;
-							return false;
-						}
-					});
-				} else if (isObject(obj)) {
-					return obj && obj[this.id || this.uri];
-				}
-				return result;
-			},
-
-			template: function (url) {
-				if (!isString(url)) throw new Error('路径类型错误');
-				var reg = /\{([^{}]+)\}/g, res, that = this;
-				res = url.replace(reg, function (match, param) {
-					return Data.vars && Data.vars[param] ? Data.vars[param] : param
-				});
-				if (reg.test(res)) {
-					return that.template(res);
-				} else {
-					return res;
-				}
-			},
-			getQuery: function (query) {
-				var vars = query.replace("?", "").split('&'), result = {};
-				for (var i = 0; i < vars.length; i++) {
-					var pair = vars[i].split('=');
-					result[decodeURIComponent(pair[0])] = decodeURIComponent(pair[1]);
-				}
-				return result;
-			},
-			isAbsolutePath: function (path) {
-				var reg = new RegExp('^(?:[a-z]+:)?\/\/', 'i');
-				return reg.test(path);
-			},
-			resolvePath: function () {
-				var numUrls = arguments.length;
-
-				if (numUrls === 0) {
-					throw new Error("resolveUrl requires at least one argument; got none.")
-				}
-
-				var base = document.createElement("base");
-				base.href = arguments[0];
-
-				if (numUrls === 1) {
-					return base.href
-				}
-
-				var head = document.getElementsByTagName("head")[0];
-				head.insertBefore(base, head.firstChild);
-
-				var a = document.createElement("a");
-				var resolved;
-
-				for (var index = 1; index < numUrls; index++) {
-					a.href = arguments[index];
-					resolved = a.href;
-					base.href = resolved
-				}
-
-				head.removeChild(base);
-
-				return resolved
-			},
-
-			getCurrentScript: function () {
-				var doc = document;
-				var head = doc.head || doc.getElementsByTagName("head")[0] || doc.documentElement;
-				if (doc.currentScript) {
-					return doc.currentScript.src;
-				}
-				var stack;
-				try {
-					a.b.c();
-				} catch (e) {
-					stack = e.stack;
-					if (!stack && window.opera) {
-						stack = (String(e).match(/of linked script \S+/g) || []).join(" ");
-					}
-				}
-				if (stack) {
-					stack = stack.split(/[@ ]/g).pop();
-					stack = stack[0] == "(" ? stack.slice(1, -1) : stack;
-					return stack.replace(/(:\d+)?:\d+$/i, "");
-				}
-				var nodes = head.getElementsByTagName("script");
-				for (var i = 0, node; node = nodes[i++];) {
-					if (node.readyState === "interactive") {
-						return node.className = node.src;
-					}
-				}
-			}
-		}, {
-			registerFileExtParser: function (method) {
-				if (!isFunction(method)) return;
-				Hook.$on("FILE_EXTS_PARSER", function (that) {
-					method.call(that);
-				});
-			},
-			registerPathParser: function (method) {
-				if (!isFunction(method)) return;
-				Hook.$on("PATH_PARSER", function (that) {
-					method.call(that);
-				});
-			},
-			registerPathMaper: function (method) {
-				if (!isFunction(method)) return;
-				Hook.$on("PATH_MAPER", function (that) {
-					method.call(that);
-				});
-			},
-			createPath: function (id,baseUrl) {
-				return new _.Path(id,baseUrl);
-			}
-		})
-	};
-
-	var _ = Container;
-
-	var PluginAPI = {
-		registerModuleParser: _.Module.registerModuleParser,
-
-		registerDriverLoader: _.Driver.registerDriverLoader,
-		registerDriverLoaded:_.Driver.registerDriverLoaded,
-		registerDriverBeforeLoad: _.Driver.registerDriverBeforeLoad,
-
-		registerFileExtParser: _.Path.registerFileExtParser,
-		registerPathParser: _.Path.registerPathParser,
-		registerPathMaper: _.Path.registerPathMaper,
-
-		createModule: _.Module.createModule,
-		createPath: _.Path.createPath
-	};
-
-
-
-	forEach(Container,function(_,className){
-		Class.inherit(Container[className], Emitter);
-	});
-
-	if(!global.Promise){
-		throw "浏览器不支持Promise,请升级浏览器再使用该管理器！或者使用kvm-promise.js"
-	}
-
-	/**
-	 *  返回一个装饰器
-	 */
-	var Dectorator = {
-		/**
-		 * 配置方法
-		 */
-		config: function (config) {
-			merge(true,Data, config);
-			return this;
-		},
-		/**
-		 * 获取全局数据
-		 */
-		data: function (name) {
-			return Data[name] ? Data[name] : Data;
-		},
-		/**
-		 * 模块定义方法
-		 */
-		define: function () {
-			ModuleCache.add(_.Module.createModule.apply(null,[true].concat(toArray(arguments))));
-			return this;
-		},
-		/**
-		 * 模块调用方法
-		 */
-		invoke: function () {
-			return _.Module.createModule.apply(null,toArray(arguments)).invoke();
-		},
-		/**
-		 * 使用模块方法
-		 */
-		use: function (id,callback) {
-			var module = _.Module.createModule(id);
-			module.invoke(function(instance){
-				isFunction(callback) && callback(instance);
-			}).catch(function(e){
-				throw e;
-			});
-		},
-		/**
-		 * 插件注册工厂方法
-		 */
-		registerPlugin: function (factory) {
-			if (isFunction(factory)) {
-				factory.call(this, PluginAPI);
+			} else {
+				that.callback([]);
 			}
 		}
-	};
-
-	return Dectorator;
-})();
-
-Manager.define("$class",function(){
-	return Class;
-});
-Manager.define("$emitter",function(){
-	return Emitter;
-});
-global.kvm = {};
-merge(global.kvm,{
-	isArray: isArray,
-	isString: isString,
-	isFunction: isFunction,
-	isObject: isObject,
-	isReference: isReference,
-	isEmpty: isEmpty,
-	isBoolean:isBoolean,
-	getKeyLength: getKeyLength,
-	isValue: isValue,
-	guid:guid,
-	unique: unique,
-	toArray: toArray,
-	bind: bind,
-	forEach: forEach,
-	merge: merge,
-	eachTask: eachTask,
-	copy: copy,
-	Class:Class,
-	Emitter:Emitter
-});
-global.KVM = global.kvm;
-global.kvm.module = Manager;
-global.KVM.Module = Manager;
-global.define = Manager.define;
-global.define.amd = true;
-
-})(window);
-/**
- * 可以使kvm支持别名机制
- */
-(function(){
-	kvm.module.registerPlugin(function(API){
-		API.registerPathMaper(function(){
-			var alias = kvm.module.data('alias');
-			if (this.isAbsolutePath(this.id)) return;
-			if(alias[this.id]){
-				this.uri = alias[this.id];
-				this._parser();
+	}, {
+		key: "_checkDone",
+		value: function _checkDone() {
+			return this.reqs.length == this.results.length;
+		}
+	}, {
+		key: "_done",
+		value: function _done(module) {
+			this.results.push(module);
+			if (this._checkDone()) {
+				if (_utils2["default"].isFunction(this.callback)) {
+					this.callback(this.results);
+				}
 			}
-		});
-	});
-})();
+		}
+	}, {
+		key: "send",
+		value: function send() {
+			this.drivers.forEach(function (driver) {
+				driver.load();
+			});
+		}
+	}], [{
+		key: "fetch",
+		value: function fetch(sender, paths) {
+			paths = _utils2["default"].isArray(paths) ? paths : [paths];
+			return new _Promise(function (resolve) {
+				new Request(sender, paths, function (modules) {
+					resolve(modules);
+				});
+			});
+		}
+	}]);
 
-/**
- * 可以使kvm支持commonjs规范
- */
+	return Request;
+})(_Emitter6["default"]);
 
-(function(){
+var Driver = (function (_Emitter2) {
+	function Driver(path) {
+		_classCallCheck(this, Driver);
 
-	kvm.module.registerPlugin(function(API){
-		API.registerModuleParser(function(){
-			function uniquePath(paths){
-				var i,j;
-				for(i=0;i < paths.length;i++){
-					for(j=i+1;j < paths.length;j++){
-						if(paths[i].equal(paths[j])){
-							paths.splice(j,1);
-						}
-					}
-				}
-				return paths;
+		_get(Object.getPrototypeOf(Driver.prototype), "constructor", this).call(this);
+		this.path = path;
+		this.module = null;
+		if (!Driver.getDriver(path)) {
+			Driver.addDriver(this);
+		}
+	}
+
+	_inherits(Driver, _Emitter2);
+
+	_createClass(Driver, [{
+		key: "beforeLoad",
+		value: function beforeLoad() {
+			Hook.$emit("DRIVER_BEFORE_LOAD", this);
+		}
+	}, {
+		key: "load",
+		value: function load() {
+			var path = this.path;
+			var uri = path.uri;
+			uri = _utils2["default"].addQueryString(uri, path.query);
+			uri = _utils2["default"].addHashString(uri, path.hash);
+			if (path.ext != "js") {
+				Hook.$emit("DRIVER_LOADER_" + path.ext.toLocaleUpperCase(), this);
+			} else {
+				this._loadJS(uri, this.loaded.bind(this));
 			}
-			this.injectCommonjs = function(){
-				var _this = this;
-				this.injectors.exports = function () {
-					_this.module.exports = _this.module.exports || {};
-					return _this.module.exports;
-				};
-				this.injectors.module = function(){
-					return _this.module;
-				};
-				this.injectors.require = function(){
-					return function(id){
-						var path = API.createPath(id);
-						var module = path.getModule();
-						return module && module.module && module.module.exports ? module.module.exports : {};
-					}
-				};
-			};
-			this.collectDeps = function(){
-				var deps;
-				if(kvm.isFunction(this.factory)) {
-					deps = this.parseDependencies(this.factory.toString());
-					deps = deps.map(function(id){
-						return API.createPath(id);
-					});
-					this.depPaths = uniquePath(this.depPaths.concat(deps));
-				}
-			};
-			this.parseDependencies = function (s) {
-				if(s.indexOf('require') == -1) {
-					return [];
-				}
-				var index = 0, peek, length = s.length, isReg = 1, modName = 0, parentheseState = 0, parentheseStack = [], res = [];
-				while(index < length) {
-					readch();
-					if(isBlank()) {
-					}
-					else if(isQuote()) {
-						dealQuote();
-						isReg = 1
-					}
-					else if(peek == '/') {
-						readch();
-						if(peek == '/') {
-							index = s.indexOf('\n', index);
-							if(index == -1) {
-								index = s.length;
-							}
+		}
+	}, {
+		key: "loaded",
+		value: function loaded(err, res) {
+			var path = this.path;
+			if (path.ext != "js") {
+				Dectorator.define(path.id, function () {
+					return res;
+				});
+			} else {
+				Hook.$emit("DRIVER_LOADED", this, err, res);
+			}
+		}
+	}, {
+		key: "_loadJS",
+		value: function _loadJS(url, callback) {
+			var doc = document;
+			var head = doc.head || doc.getElementsByTagName("head")[0] || doc.documentElement;
+			var baseElement = head.getElementsByTagName("base")[0];
+			var node = doc.createElement("script");
+			node.async = true;
+			node.src = url;
+			addOnload(node, callback);
+
+			baseElement ? head.insertBefore(node, baseElement) : head.appendChild(node);
+
+			function addOnload(node, callback) {
+				var supportOnload = ("onload" in node);
+
+				if (supportOnload) {
+					node.onload = onload;
+					node.onerror = function () {
+						onload(true);
+					};
+				} else {
+					node.onreadystatechange = function () {
+						if (/loaded|complete/.test(node.readyState)) {
+							onload();
 						}
-						else if(peek == '*') {
-							index = s.indexOf('*/', index);
-							if(index == -1) {
-								index = length;
-							}
-							else {
-								index += 2;
-							}
-						}
-						else if(isReg) {
-							dealReg();
-							isReg = 0
-						}
-						else {
-							index--;
-							isReg = 1;
-						}
+					};
+				}
+
+				function onload(e) {
+					// Ensure only run once and handle memory leak in IE
+					node.onload = node.onerror = node.onreadystatechange = null;
+
+					// Remove the script to reduce memory leak
+					if (Dectorator.data("debug")) {
+						head.removeChild(node);
 					}
-					else if(isWord()) {
-						dealWord();
-					}
-					else if(isNumber()) {
-						dealNumber();
-					}
-					else if(peek == '(') {
-						parentheseStack.push(parentheseState);
-						isReg = 1
-					}
-					else if(peek == ')') {
-						isReg = parentheseStack.pop();
-					}
-					else {
-						isReg = peek != ']';
-						modName = 0
+
+					// Dereference the node
+					node = null;
+
+					callback && callback(e);
+				}
+			}
+		}
+	}], [{
+		key: "getDriver",
+		value: function getDriver(path) {
+			return Driver.DRIVERS[path.uri];
+		}
+	}, {
+		key: "addDriver",
+		value: function addDriver(driver) {
+			Driver.DRIVERS[driver.path.uri] = driver;
+		}
+	}, {
+		key: "registerDriverLoaded",
+		value: function registerDriverLoaded(method) {
+			if (!_utils2["default"].isFunction(method)) {
+				return;
+			}Hook.$on("DRIVER_LOADED", function (that) {
+				method.call(that);
+			});
+		}
+	}, {
+		key: "registerDriverLoader",
+		value: function registerDriverLoader(ext, method) {
+			if (!_utils2["default"].isFunction(method)) {
+				return;
+			}ext = ext.trim();
+			ext = ext.toUpperCase();
+			Hook.$one("DRIVER_LOADER_" + ext, function (that) {
+				method.call(that, that.path.uri, that.loaded.bind(that));
+			});
+		}
+	}, {
+		key: "registerDriverBeforeLoad",
+		value: function registerDriverBeforeLoad(method) {
+			if (!_utils2["default"].isFunction(method)) {
+				return;
+			}Hook.$on("DRIVER_BEFORE_LOAD", function (that) {
+				method.call(that);
+			});
+		}
+	}]);
+
+	return Driver;
+})(_Emitter6["default"]);
+
+Driver.DRIVERS = {};
+
+var Path = (function (_Emitter3) {
+	function Path(id, baseUrl) {
+		_classCallCheck(this, Path);
+
+		_get(Object.getPrototypeOf(Path.prototype), "constructor", this).call(this);
+		this.baseUrl = baseUrl || Data.baseUrl;
+		this.id = id || "";
+		this._initId();
+		this._maper();
+		this._parser();
+		this._initUri();
+	}
+
+	_inherits(Path, _Emitter3);
+
+	_createClass(Path, [{
+		key: "_initId",
+		value: function _initId() {
+			if (!this.id) {
+				return;
+			}var _id = this.id;
+			this.query = _utils2["default"].getQuery(_id);
+			this.hash = _utils2["default"].getHash(this.id);
+			this.id = this.id.replace(/(#|\?).*/, "");
+		}
+	}, {
+		key: "_initUri",
+		value: function _initUri() {
+			this.baseUrl = this.baseUrl.replace(/\/$/, "") + "/";
+			this.uri = this.uri ? _utils2["default"].resolvePath(this.baseUrl, this.uri) : this.id ? _utils2["default"].resolvePath(this.baseUrl, this.id) : _utils2["default"].getCurrentScript().uri;
+			this._initExt();
+		}
+	}, {
+		key: "_initExt",
+		value: function _initExt() {
+			var ext = this.uri.match(/\.(\w+)$/);
+			if (ext && ext[1]) {
+				ext = ext[1].toLocaleLowerCase();
+				if (Path.__EXTS__.indexOf(ext) != -1) {
+					this.ext = ext;
+				} else {
+					this.$emit("FILE_EXTS_PARSER", this);
+					if (!Path.__EXTS__.indexOf(this.ext)) {
+						this.ext = "js";
 					}
 				}
-				return res;
-				function readch() {
-					peek = s.charAt(index++);
-				}
-				function isBlank() {
-					return /\s/.test(peek);
-				}
-				function isQuote() {
-					return peek == '"' || peek == "'";
-				}
-				function dealQuote() {
-					var start = index;
-					var c = peek;
-					var end = s.indexOf(c, start);
-					if(end == -1) {
-						index = length;
-					}
-					else if(s.charAt(end - 1) != '\\') {
-						index = end + 1;
-					}
-					else {
-						while(index < length) {
-							readch();
-							if(peek == '\\') {
-								index++;
-							}
-							else if(peek == c) {
-								break;
-							}
-						}
-					}
-					if(modName) {
-						res.push(s.slice(start, index - 1));
-						modName = 0;
-					}
-				}
-				function dealReg() {
-					index--;
-					while(index < length) {
-						readch();
-						if(peek == '\\') {
-							index++
-						}
-						else if(peek == '/') {
-							break
-						}
-						else if(peek == '[') {
-							while(index < length) {
-								readch();
-								if(peek == '\\') {
-									index++;
-								}
-								else if(peek == ']') {
-									break;
-								}
-							}
-						}
-					}
-				}
-				function isWord() {
-					return /[a-z_$]/i.test(peek);
-				}
-				function dealWord() {
-					var s2 = s.slice(index - 1);
-					var r = /^[\w$]+/.exec(s2)[0];
-					parentheseState = {
-						'if': 1,
-						'for': 1,
-						'while': 1,
-						'with': 1
-					}[r];
-					isReg = {
-						'break': 1,
-						'case': 1,
-						'continue': 1,
-						'debugger': 1,
-						'delete': 1,
-						'do': 1,
-						'else': 1,
-						'false': 1,
-						'if': 1,
-						'in': 1,
-						'instanceof': 1,
-						'return': 1,
-						'typeof': 1,
-						'void': 1
-					}[r];
-					modName = /^require\s*\(\s*(['"]).+?\1\s*\)/.test(s2);
-					if(modName) {
-						r = /^require\s*\(\s*['"]/.exec(s2)[0];
-						index += r.length - 2;
-					}
-					else {
-						index += /^[\w$]+(?:\s*\.\s*[\w$]+)*/.exec(s2)[0].length - 1;
-					}
-				}
-				function isNumber() {
-					return /\d/.test(peek)
-						|| peek == '.' && /\d/.test(s.charAt(index));
-				}
-				function dealNumber() {
-					var s2 = s.slice(index - 1);
-					var r;
-					if(peek == '.') {
-						r = /^\.\d+(?:E[+-]?\d*)?\s*/i.exec(s2)[0];
-					}
-					else if(/^0x[\da-f]*/i.test(s2)) {
-						r = /^0x[\da-f]*\s*/i.exec(s2)[0];
-					}
-					else {
-						r = /^\d+\.?\d*(?:E[+-]?\d*)?\s*/i.exec(s2)[0];
-					}
-					index += r.length - 1;
-					isReg = 0;
-				}
-			};
-			function needParse(depPaths){
-				var result = false;
-				kvm.forEach(depPaths,function(path){
-					if(path.id == "require"){
-						result = true;
+			} else {
+				this.ext = "js";
+				this.uri += ".js";
+			}
+		}
+	}, {
+		key: "_maper",
+		value: function _maper() {
+			if (!this.id) {
+				return;
+			}Hook.$emit("PATH_MAPER", this);
+		}
+	}, {
+		key: "_parser",
+		value: function _parser() {
+			if (!this.id) {
+				return;
+			}this._parseVars();
+			Hook.$emit("PATH_PARSER", this);
+		}
+	}, {
+		key: "_parseVars",
+		value: function _parseVars() {
+			this.baseUrl = this.template(this.baseUrl);
+			this.id = this.template(this.id);
+			this.uri = this.uri ? this.template(this.uri) : "";
+		}
+	}, {
+		key: "getModule",
+		value: function getModule() {
+			return ModuleCache.find(this);
+		}
+	}, {
+		key: "equal",
+		value: function equal(path) {
+			return this.id && this.id == path.id || this.uri && this.uri == path.uri;
+		}
+	}, {
+		key: "getMap",
+		value: function getMap(obj) {
+			var result = null,
+			    that = this;
+			if (_utils2["default"].isArray(obj)) {
+				obj.forEach(function (item) {
+					if (item.equal && item.equal(that) || item.path && item.path.equal(that)) {
+						result = item;
 						return false;
 					}
 				});
-				return result;
+			} else if (_utils2["default"].isObject(obj)) {
+				return obj && obj[this.id || this.uri];
 			}
-			this.injectCommonjs();
-			if(this.factory && needParse(this.depPaths)) {
-				this.collectDeps();
-			}
-		});
-	});
-})();
-
-/**
- * 可以使kvm加载css文件
- */
-(function(){
-	kvm.module.registerPlugin(function(API){
-		API.registerDriverLoader('css',function(uri,callback){
-			var doc = document;
-			var head = doc.head || doc.getElementsByTagName("head")[0] || doc.documentElement;
-			var ss = window.document.createElement( "link" );
-			var sheets = window.document.styleSheets;
-			var _this = this;
-			ss.rel = "stylesheet";
-			ss.href = uri;
-			ss.media = "only x";
-			if( callback ) {
-				ss.onload = function(){
-					callback && callback(null,ss);
-				};
-
-				ss.onerror = function(){
-					callback && callback(true);
-				};
-			}
-			head.appendChild(ss);
-			ss.onloadcssdefined = function( cb ){
-				var defined;
-				for( var i = 0; i < sheets.length; i++ ){
-					if( sheets[ i ].href && sheets[ i ].href.indexOf( uri ) > -1 ){
-						defined = true;
-					}
-				}
-				if( defined ){
-					cb();
-				} else {
-					setTimeout(function() {
-						ss.onloadcssdefined( cb );
-					});
-				}
-			};
-			ss.onloadcssdefined(function() {
-				ss.media = _this.path.query && _this.path.query.media || "all";
+			return result;
+		}
+	}, {
+		key: "template",
+		value: function template(url) {
+			if (!_utils2["default"].isString(url)) throw new Error("路径类型错误");
+			var reg = /\{([^{}]+)\}/g,
+			    res = undefined,
+			    that = this;
+			res = url.replace(reg, function (match, param) {
+				return Data.vars && Data.vars[param] ? Data.vars[param] : param;
 			});
-		});
-
-		API.registerDriverLoaded(function (err,res) {
-			var path = this.path;
-			if(path.ext == "css" && !err){
-				kvm.module.define(path.id, function(){
-					return res;
-				});
-			}
-		});
-	});
-})();
-
-define("$do",function(){
-
-
-	function crawlObject(obj, callback,isDeep){
-		isDeep = kvm.isBoolean(isDeep) && isDeep === false ? false : true;
-		if (!kvm.isFunction(callback)) return;
-		kvm.forEach(obj, function (val, key) {
-			if (kvm.isReference(val) && isDeep) {
-				callback(val, key);
-				crawlObject(val, callback);
+			if (reg.test(res)) {
+				return that.template(res);
 			} else {
-				callback(val, key);
-			}
-		});
-	}
-
-
-	function inPaths(path, paths, _swap) {
-		var res, _inPath;
-		res = false;
-		_inPath = function(a, b) {
-			var a_l, b_l, index;
-			a_l = a.length;
-			b_l = b.length;
-			index = 0;
-			while (index < b_l) {
-				if (b.charAt(index) !== a.charAt(index)) {
-					return false;
-				}
-				index++;
-			}
-			if (index === b_l) {
-				if (a_l === b_l) {
-					return true;
-				} else if (a_l > b_l && "[.".indexOf(a.charAt(b_l)) > -1) {
-					return true;
-				}
-			}
-		};
-		kvm.forEach(paths, function(_path) {
-			res = _swap ? _inPath(_path, path) : _inPath(path, _path);
-			if (res) {
-				return false;
-			}
-		});
-		return res;
-	}
-
-
-
-	var COMMANDS = {
-		OPERATORS: "$remove,$set,$push,$slice,$concat,$pop,$unshift,$merge,$deep_merge,$clone,$find,$sort,$foreach".split(","),
-		FILTERS: "$gt,$lt,$is,$not,$gte,$lte,$icontains,$contains,$in,$not_in,$and,$or".split(","),
-		SORTS: "$desc,$asc".split(","),
-		CLONES: "$white_list,$black_list,$filter,$deep".split(","),
-		COMMONS: "$callback".split(",")
-	};
-	var KEYWORDS = (function () {
-		var cmd_name,
-			cmds_name,
-			keywords,
-			_i,
-			_len,
-			_ref;
-		keywords = {};
-		for (cmds_name in COMMANDS) {
-			_ref = COMMANDS[cmds_name];
-			for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-				cmd_name = _ref[_i];
-				keywords[cmd_name] = true;
-			}
-		}
-		return keywords;
-	})();
-
-	function Do(data, cmds) {
-		this.data = data;
-		this._commands.__parent__ = this;
-		this._filters.__parent__ = this;
-		if (cmds) {
-			this.exec(cmds);
-		}
-	}
-
-	kvm.merge(Do.prototype, {
-		_collect: function (obj) {
-			var name,
-				res;
-			res = {
-				operators: {},
-				filters: {},
-				sorts: {},
-				clones: {},
-				commons: {},
-				props: {},
-				value: null
-			};
-			if (!kvm.isReference(obj)) {
-				res.value = obj;
 				return res;
 			}
-			for (name in obj) {
-				if (COMMANDS.OPERATORS.indexOf(name) > -1) {
-					res.operators[name] = obj[name];
-				} else if (COMMANDS.FILTERS.indexOf(name) > -1) {
-					res.filters[name] = obj[name];
-				} else if (COMMANDS.SORTS.indexOf(name) > -1) {
-					res.sorts[name] = obj[name];
-				} else if (COMMANDS.CLONES.indexOf(name) > -1) {
-					res.clones[name] = obj[name];
-				} else if (COMMANDS.COMMONS.indexOf(name) > -1) {
-					res.commons[name] = obj[name];
-				} else {
-					res.props[name] = obj[name];
-				}
-			}
-			return res;
-		},
-		_filters: {
-			$is: function (a, b) {
-				return a === b;
-			},
-			$not: function (a, b) {
-				return a !== b;
-			},
-			$gt: function (a, b) {
-				return a > b;
-			},
-			$lt: function (a, b) {
-				return a < b;
-			},
-			$gte: function (a, b) {
-				return a >= b;
-			},
-			$lte: function (a, b) {
-				return a <= b;
-			},
-			$icontains: function (a, b) {
-				return a.toLowerCase().indexOf(b.toLowerCase()) > -1;
-			},
-			$contains: function (a, b) {
-				return a.indexOf(b) > -1;
-			},
-			$in: function (a, b) {
-				return b.indexOf(a) > -1;
-			},
-			$not_in: function (a, b) {
-				return b.indexOf(a) === -1;
-			}
-		},
-		_commands:{
-			$set: function (ref, collected) {
-				var prop_name,
-					prop_val,
-					_ref,
-					_results;
-				_ref = collected.props;
-				_results = [];
-				for (prop_name in _ref) {
-					prop_val = _ref[prop_name];
-					if (kvm.isReference(prop_val)) {
-						ref[prop_name] = ref[prop_name] || prop_val.constructor();
-						_results.push(this.$set(ref[prop_name], this.__parent__._collect(prop_val)));
-					} else {
-						_results.push(ref[prop_name] = prop_val);
-					}
-				}
-				return _results;
-			},
-			$remove: function (ref, collected) {
-				var prop_name,
-					prop_val,
-					_ref,
-					_results;
-				_ref = collected.props;
-				_results = [];
-				for (prop_name in _ref) {
-					prop_val = _ref[prop_name];
-					if (!kvm.isArray(ref) && prop_val === true) {
-						_results.push(delete ref[prop_name]);
-					} else {
-						_results.push(void 0);
-					}
-				}
-				return _results;
-			},
-			$slice: function (ref, collected) {
-				var prop_name,
-					prop_val,
-					_ref,
-					_results;
-				_ref = collected.props;
-				_results = [];
-				for (prop_name in _ref) {
-					prop_val = _ref[prop_name];
-					if (ref[prop_name] && kvm.isArray(ref[prop_name])) {
-						if (!kvm.isArray(prop_val)) {
-							prop_val = [prop_val];
-						}
-						_results.push(ref[prop_name] = ref[prop_name].slice.apply(ref[prop_name], prop_val));
-					} else {
-						_results.push(void 0);
-					}
-				}
-				return _results;
-			},
-			$push: function (ref, collected) {
-				var prop_name,
-					prop_val,
-					_ref,
-					_results;
-				_ref = collected.props;
-				_results = [];
-				for (prop_name in _ref) {
-					prop_val = _ref[prop_name];
-					if (ref[prop_name] && kvm.isArray(ref[prop_name])) {
-						_results.push(ref[prop_name].push(prop_val));
-					} else {
-						_results.push(void 0);
-					}
-				}
-				return _results;
-			},
-			$concat: function (ref, collected) {
-				var prop_name,
-					prop_val,
-					_ref,
-					_results;
-				_ref = collected.props;
-				_results = [];
-				for (prop_name in _ref) {
-					prop_val = _ref[prop_name];
-					if (ref[prop_name] && kvm.isArray(ref[prop_name])) {
-						if (!kvm.isArray(prop_val)) {
-							prop_val = [prop_val];
-						}
-						_results.push(ref[prop_name] = ref[prop_name].concat(prop_val));
-					} else {
-						_results.push(void 0);
-					}
-				}
-				return _results;
-			},
-			$pop: function (ref, collected) {
-				var prop_name,
-					prop_val,
-					_ref,
-					_results;
-				_ref = collected.props;
-				_results = [];
-				for (prop_name in _ref) {
-					prop_val = _ref[prop_name];
-					if (ref[prop_name] && kvm.isArray(ref[prop_name])) {
-						_results.push(ref[prop_name].pop());
-					} else {
-						_results.push(void 0);
-					}
-				}
-				return _results;
-			},
-			$unshift: function (ref, collected) {
-				var prop_name,
-					prop_val,
-					_ref,
-					_results;
-				_ref = collected.props;
-				_results = [];
-				for (prop_name in _ref) {
-					prop_val = _ref[prop_name];
-					if (ref[prop_name] && kvm.isArray(ref[prop_name])) {
-						_results.push(ref[prop_name].unshift(prop_val));
-					} else {
-						_results.push(void 0);
-					}
-				}
-				return _results;
-			},
-			$merge: function (ref, collected) {
-				return kvm.merge(ref, collected.props);
-			},
-			$deep_merge: function (ref, collected) {
-				return kvm.merge(true, ref, collected.props);
-			},
-			$clone: function (ref, collected) {
-				var blackList,
-					callback,
-					filter,
-					isDeep,
-					res,
-					whiteList;
-				isDeep = !!collected.clones.$deep;
-				whiteList = collected.clones.$white_list;
-				blackList = collected.clones.$black_list;
-				filter = collected.clones.$filter;
-				callback = collected.commons.$callback;
-				if (!kvm.isEmpty(whiteList)) {
-					res = kvm.copy(isDeep, ref,
-						function (item, name, path) {
-							var filter_res;
-							if (inPaths(path, whiteList, true)) {
-								if (!kvm.isEmpty(blackList)) {
-									if (!inPaths(path, blackList)) {
-										if (kvm.isFunction(filter)) {
-											filter_res = filter(item, name, path);
-										}
-										if (kvm.isBoolean(filter_res)) {
-											if (filter_res) {
-												return true;
-											} else {
-												return false;
-											}
-										} else {
-											return true;
-										}
-									} else {
-										return false;
-									}
-								} else {
-									return true;
-								}
-							} else {
-								return false;
-							}
-						});
-				} else if (!kvm.isEmpty(blackList)) {
-					res = kvm.copy(isDeep, ref,
-						function (item, name, path) {
-							var filter_res;
-							if (!inPaths(path, blackList)) {
-								if (kvm.isFunction(filter)) {
-									filter_res = filter(item, name, path);
-								}
-								if (kvm.isBoolean(filter_res)) {
-									if (filter_res) {
-										return true;
-									} else {
-										return false;
-									}
-								} else {
-									return true;
-								}
-							} else {
-								return false;
-							}
-						});
-				} else if (kvm.isFunction(filter)) {
-					res = kvm.copy(isDeep, ref,
-						function (item, name, path) {
-							var filter_res;
-							if (kvm.isFunction(filter)) {
-								filter_res = filter(item, name, path);
-							}
-							if (kvm.isBoolean(filter_res)) {
-								if (filter_res) {
-									return true;
-								} else {
-									return false;
-								}
-							} else {
-								return true;
-							}
-						});
-				} else {
-					res = kvm.copy(isDeep, ref);
-				}
-				if (kvm.isFunction(callback)) {
-					return callback(res);
-				}
-			},
-			$find: function (ref, collected) {
-				var callback,
-					condition_length,
-					res,
-					_this;
-				_this = this;
-				callback = collected.commons.$callback;
-				condition_length = Object.keys(collected.filters).length;
-				res = [];
-				if (!kvm.isEmpty(collected.filters)) {
-					kvm.forEach(ref,//遍历数组
-						function (ref_item) {
-							var ok1 = 0;
-							var isAnd1 = _isAnd(collected.filters.$and,collected.filters.$or);
-							if (!kvm.isEmpty(ref_item)) {
-								kvm.forEach(collected.filters,//遍历筛选器,两层条件
-									function (filter_body, filter_name) {
-										if(filter_name == "$or" || filter_name == "$and") return true;
-										var ok2 = 0;
-										var isAnd2 = _isAnd(filter_body.$and,filter_body.$or);
-										kvm.forEach(filter_body,
-											function (item, key) {
-												if(key == "$or" || key == "$and") return true;
-												if (_this.__parent__._filters[filter_name](ref_item[key], item)) {
-													if(isAnd2) {
-														return ok2++;
-													} else {
-														ok2++;
-														return false;
-													}
-												}
-											});
-										if(isAnd2) {
-											if (ok2 >= kvm.getKeyLength(filter_body)) {//入内层筛选条件全部成立，组合条件成立
-												ok1++;
-											}
-										} else {
-											if(ok2 > 0){
-												ok1++;
-											}
-										}
-									});
-								if(!isAnd1) {
-									if (ok1 >= condition_length) {//如果外层筛选条件全部成立则推入数组
-										res.push(ref_item);
-									}
-								} else {
-									if (ok1 > 0 ) {
-										res.push(ref_item);
-									}
-								}
-							}
-						});
-				} else {
-					res = ref;
-				}
-				if (kvm.isFunction(callback)) {
-					return callback(res);
-				}
-				function _isAnd(and,or){
-					var res = true;
-					if(and == or){
-						return res;
-					} else {
-						if(and == undefined || and == null){
-							if(or){
-								res = !or;
-							}
-						} else {
-							res = and;
-						}
-					}
-					return res;
-				}
-			},
-			$foreach: function (ref, collected) {
-				if (kvm.isFunction(collected.value)) {
-					return kvm.forEach(ref, collected.value);
-				}
-			},
-			$sort: function (ref, collected) {
-				var key,
-					val,
-					_ref,
-					_results;
-				if (kvm.isArray(ref) && kvm.isReference(collected.value)) {
-					_ref = collected.props;
-					_results = [];
-					for (key in _ref) {
-						val = _ref[key];
-						if (val === "desc") {
-							_results.push(ref.sort(function (a, b) {
-								if (kvm.isReference(a) && kvm.isReference(b)) {
-									if (a[key] < b[key]) {
-										return 1;
-									} else {
-										return -1;
-									}
-								} else {
-									if (a < b) {
-										return 1;
-									} else {
-										return -1;
-									}
-								}
-							}));
-						} else {
-							_results.push(ref.sort(function (a, b) {
-								if (kvm.isReference(a) && kvm.isReference(b)) {
-									if (a[key] > b[key]) {
-										return 1;
-									} else {
-										return -1;
-									}
-								} else {
-									if (a > b) {
-										return 1;
-									} else {
-										return -1;
-									}
-								}
-							}));
-						}
-					}
-					return _results;
-				} else {
-					if (collected.value === "desc") {
-						return ref.sort(function (a, b) {
-							return b - a;
-						});
-					} else {
-						return ref.sort(function (a, b) {
-							return a - b;
-						});
-					}
-				}
-			}
-		},
-		_exec:function (ref, cmd_obj) {
-			var cmd_body,
-				cmd_name,
-				_results;
-			_results = [];
-			for (cmd_name in cmd_obj) {
-				cmd_body = cmd_obj[cmd_name];
-				if (this._commands[cmd_name]) {
-					_results.push(this._commands[cmd_name](ref, this._collect(cmd_body)));
-				} else if (kvm.isReference(cmd_body) && !KEYWORDS[cmd_name]) {
-					ref[cmd_name] = ref[cmd_name] || cmd_body.constructor();
-					_results.push(this._exec(ref[cmd_name], cmd_body));
-				} else {
-					_results.push(void 0);
-				}
-			}
-			return _results;
-		},
-		exec:function(cmds){
-			return this._exec(this.data, cmds);
 		}
-	});
+	}], [{
+		key: "registerFileExtParser",
+		value: function registerFileExtParser(method) {
+			if (!_utils2["default"].isFunction(method)) {
+				return;
+			}Hook.$on("FILE_EXTS_PARSER", function (that) {
+				method.call(that);
+			});
+		}
+	}, {
+		key: "registerPathParser",
+		value: function registerPathParser(method) {
+			if (!_utils2["default"].isFunction(method)) {
+				return;
+			}Hook.$on("PATH_PARSER", function (that) {
+				method.call(that);
+			});
+		}
+	}, {
+		key: "registerPathMaper",
+		value: function registerPathMaper(method) {
+			if (!_utils2["default"].isFunction(method)) {
+				return;
+			}Hook.$on("PATH_MAPER", function (that) {
+				method.call(that);
+			});
+		}
+	}, {
+		key: "createPath",
+		value: function createPath(id, baseUrl) {
+			return new Path(id, baseUrl);
+		}
+	}]);
 
-	Do.exec = function (data, cmds, hook) {
-		kvm.isFunction(hook) && crawlObject(cmds, function (val, key) {
-			var old_callback;
-			if (key == "$find" || key == "$clone") {
-				old_callback = val.$callback || function () {
-				};
-				val.$callback = function () {
-					var args = kvm.toArray(arguments);
-					hook.apply(null, args);
-					old_callback.apply(null, args);
-				};
+	return Path;
+})(_Emitter6["default"]);
+
+Path.__EXTS__ = ["js", "css", "json", "jsonp", "tpl", "html"];
+
+var Module = (function (_Emitter4) {
+	function Module(meta) {
+		_classCallCheck(this, Module);
+
+		_get(Object.getPrototypeOf(Module.prototype), "constructor", this).call(this);
+		_utils2["default"].options(this, {
+			path: null,
+			depPaths: [],
+			factory: null,
+			injectors: {},
+			installed: false,
+			module: {
+				exports: null
 			}
+		}, meta);
+		Hook.$emit("MODULE_PARSER", this);
+	}
+
+	_inherits(Module, _Emitter4);
+
+	_createClass(Module, [{
+		key: "getInjector",
+		value: function getInjector(path) {
+			var injector = this.injectors[path.id];
+			if (injector) {
+				return Module.createModule(path.id, injector);
+			}
+		}
+	}, {
+		key: "invoke",
+		value: function invoke() {
+			var that = this;
+			return new _Promise(function (resolve) {
+				if (that.installed) {
+					resolve(_Promise.resolve(that.module.exports));
+				} else if (that.factory) {
+					resolve(_Promise.resolve(that._inject()));
+				} else {
+					if (that.path && !that.factory) {
+						resolve(Request.fetch(that, that.path).then(function (modules) {
+							return _Promise.resolve(modules[0]._inject());
+						}));
+					} else {
+						throw new Error("模块不符合规范!");
+					}
+				}
+			});
+		}
+	}, {
+		key: "_collectDeps",
+		value: function _collectDeps() {
+			var that = this,
+			    dependencies = [],
+			    injector = undefined;
+			return Request.fetch(this, this.depPaths).then(function (modules) {
+				return new _Promise(function (resolve) {
+					if (that.depPaths.length > 0) {
+						that.depPaths.forEach(function (path, index) {
+							injector = path.getMap(modules);
+							if (injector) {
+								dependencies[index] = injector.invoke();
+								if (dependencies.length == that.depPaths.length) {
+									resolve(_Promise.all(dependencies));
+								}
+							}
+						});
+					} else {
+						resolve(_Promise.all([]));
+					}
+				});
+			});
+		}
+	}, {
+		key: "_inject",
+		value: function _inject() {
+			var that = this;
+			return this._collectDeps().then(function (dependencies) {
+				var instance = that.factory.apply(null, dependencies);
+				if (that.module.exports) {
+					instance = that.module.exports;
+				} else {
+					that.module.exports = instance;
+				}
+				that.installed = true;
+				return instance;
+			});
+		}
+	}], [{
+		key: "createModule",
+		value: function createModule() {
+			for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
+				args[_key] = arguments[_key];
+			}
+
+			return new Module(Module.parseMeta.apply(null, args));
+		}
+	}, {
+		key: "parseMeta",
+		value: function parseMeta() {
+			for (var _len2 = arguments.length, params = Array(_len2), _key2 = 0; _key2 < _len2; _key2++) {
+				params[_key2] = arguments[_key2];
+			}
+
+			var meta = {},
+			    auto_path = false;
+			if (_utils2["default"].isBoolean(params[0])) {
+				auto_path = params[0];
+				params = params.slice(1);
+			}
+			params.forEach(function (param) {
+				if (_utils2["default"].isFunction(param)) {
+					meta.factory = param;
+				} else if (_utils2["default"].isArray(param)) {
+					if (_utils2["default"].isFunction(param[param.length - 1])) {
+						meta.factory = param[param.length - 1];
+						meta.depPaths = param.slice(0, param.length - 1).map(function (id) {
+							return new Path(id);
+						});
+					} else {
+						meta.depPaths = param.map(function (id) {
+							return new Path(id);
+						});
+					}
+				} else if (_utils2["default"].isString(param)) {
+					meta.path = new Path(param);
+				} else if (_utils2["default"].isObject(param)) {
+					meta.injectors = param;
+				}
+			});
+			if (!meta.path && auto_path) {
+				meta.path = new Path();
+			}
+			return meta;
+		}
+	}, {
+		key: "registerModuleParser",
+		value: function registerModuleParser(method) {
+			if (!_utils2["default"].isFunction(method)) {
+				return;
+			}Hook.$on("MODULE_PARSER", function (that) {
+				method.call(that);
+			});
+		}
+	}]);
+
+	return Module;
+})(_Emitter6["default"]);
+
+var PluginInterface = {
+	registerModuleParser: Module.registerModuleParser,
+
+	registerDriverLoader: Driver.registerDriverLoader,
+	registerDriverLoaded: Driver.registerDriverLoaded,
+	registerDriverBeforeLoad: Driver.registerDriverBeforeLoad,
+
+	registerFileExtParser: Path.registerFileExtParser,
+	registerPathParser: Path.registerPathParser,
+	registerPathMaper: Path.registerPathMaper,
+
+	createModule: Module.createModule,
+	createPath: Path.createPath
+};
+
+var Dectorator = {
+
+	config: function config(options) {
+		_utils2["default"].options(Data, options);
+	},
+
+	data: function data(name) {
+		return Data[name] ? Data[name] : Data;
+	},
+
+	define: function define() {
+		for (var _len3 = arguments.length, args = Array(_len3), _key3 = 0; _key3 < _len3; _key3++) {
+			args[_key3] = arguments[_key3];
+		}
+
+		ModuleCache.insert(Module.createModule.apply(null, [true].concat(args)));
+		return this;
+	},
+
+	invoke: function invoke() {
+		for (var _len4 = arguments.length, args = Array(_len4), _key4 = 0; _key4 < _len4; _key4++) {
+			args[_key4] = arguments[_key4];
+		}
+
+		return Module.createModule.apply(null, args).invoke();
+	},
+
+	use: function use(id, callback) {
+		var module = Module.createModule(id);
+		module.invoke(function (instance) {
+			_utils2["default"].isFunction(callback) && callback(instance);
+		})["catch"](function (e) {
+			throw e;
 		});
-		return new Do(data, cmds);
-	};
+	},
 
-	return Do;
+	registerPlugin: function registerPlugin(factory) {
+		if (_utils2["default"].isFunction(factory)) {
+			factory.call(this, PluginInterface);
+		}
+	}
+};
 
+exports["default"] = Dectorator;
+module.exports = exports["default"];
+
+},{"./emitter":35,"./utils":37,"babel-runtime/core-js/promise":3,"babel-runtime/helpers/class-call-check":4,"babel-runtime/helpers/create-class":5,"babel-runtime/helpers/get":6,"babel-runtime/helpers/inherits":7,"babel-runtime/helpers/interop-require-wildcard":8}],35:[function(require,module,exports){
+"use strict";
+
+var _createClass = require("babel-runtime/helpers/create-class")["default"];
+
+var _classCallCheck = require("babel-runtime/helpers/class-call-check")["default"];
+
+var _interopRequireWildcard = require("babel-runtime/helpers/interop-require-wildcard")["default"];
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
 });
 
-/**
- * 可以使kvm加载json文件
- */
-/**
- * 可以使kvm支持包管理
- */
-(function () {
-	kvm.module.registerPlugin(function (API) {
-		var baseUrl = kvm.module.data('baseUrl');
-		var packages = kvm.module.data('packages');
-		API.registerPathParser(function () {
-			var packname, index,
-				uri = this.uri || this.id;
-			if(!uri) return;
-			index = uri.indexOf("/");
-			packname = uri.substr(0, index);
-			if (packages && packages[packname]) {
-				this.baseUrl = packages[packname].uri || packages[packname].url || baseUrl;
-				this.uri = uri.substr(index + 1);
-				this._parseVars();
+var _utils = require("./utils");
+
+var _utils2 = _interopRequireWildcard(_utils);
+
+var Emitter = (function () {
+	function Emitter(events) {
+		_classCallCheck(this, Emitter);
+
+		if (events) this.$$EVENTS = events;else this.$$EVENTS = {};
+	}
+
+	_createClass(Emitter, [{
+		key: "$on",
+		value: function $on(names, fn) {
+			var _this = this;
+			names.split(",").forEach(function (_name) {
+				if (_utils2["default"].isFunction(fn)) {
+					if (_this.$$EVENTS[_name] && _utils2["default"].isArray(_this.$$EVENTS[_name])) _this.$$EVENTS[_name].push(fn);else _this.$$EVENTS[_name] = [fn];
+				}
+			});
+			return this;
+		}
+	}, {
+		key: "$one",
+		value: function $one(names, fn) {
+			var _this = this;
+			names.split(",").forEach(function (_name) {
+				if (_utils2["default"].isFunction(fn)) {
+					if (!_this.$$EVENTS[_name]) _this.$$EVENTS[_name] = [fn];
+				}
+			});
+			return this;
+		}
+	}, {
+		key: "$emit",
+		value: function $emit(_name) {
+			for (var _len = arguments.length, args = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
+				args[_key - 1] = arguments[_key];
 			}
-		});
-	});
-})();
 
-
-/**
- * 可以使kvm支持包装器
- */
-(function () {
-	kvm.module.registerPlugin(function (API) {
-		var shims = kvm.module.data('shims');
-		API.registerPathMaper(function () {
-			var shim = shims[this.id];
-			if (shim) {
-				this.uri = shim.uri || shim.url;
-				this._parser();
+			var events = this.$$EVENTS[_name];
+			if (events && _utils2["default"].isArray(events)) {
+				for (var i = 0; i < events.length; i++) {
+					events[i].apply(null, args);
+				}
 			}
-		});
-
-		API.registerDriverBeforeLoad(function () {
-			var path = this.path;
-			var shim = shims[path.id];
-			if (shim) {
-				if (shim.exports && !shim.factory) {
-					if (window[shim.exports]) {
-						this.module = API.createModule(path.id, function () {
-							return window[shim.exports];
-						});
+			return this;
+		}
+	}, {
+		key: "$remove",
+		value: function $remove(_name, fn) {
+			var events = this.$$EVENTS[_name];
+			if (events && _utils2["default"].isArray(events)) {
+				if (fn) {
+					for (var i = events.length - 1; i >= 0; i--) {
+						if (fn === events[i]) {
+							events.splice(i, 1);
+						}
 					}
-				}
-			}
-		});
-
-		API.registerDriverLoaded(function () {
-			var path = this.path;
-			var shim = shims[path.id];
-			if (shim && !path.getModule()) {
-				if (kvm.isFunction(shim.factory)) {
-					kvm.module.define(path.id, shim.factory);
 				} else {
-					kvm.module.define(path.id, function () {
-						return window[shim.exports]
-					});
+					delete this.$$EVENTS[_name];
 				}
 			}
-		});
-	});
+			return this;
+		}
+	}]);
+
+	return Emitter;
 })();
 
+exports["default"] = Emitter;
+module.exports = exports["default"];
 
-/**
- * 可以使kvm加载html模板
- */
+},{"./utils":37,"babel-runtime/helpers/class-call-check":4,"babel-runtime/helpers/create-class":5,"babel-runtime/helpers/interop-require-wildcard":8}],36:[function(require,module,exports){
+"use strict";
+
+var _Object$assign = require("babel-runtime/core-js/object/assign")["default"];
+
+var _interopRequireWildcard = require("babel-runtime/helpers/interop-require-wildcard")["default"];
+
+var _utils = require("./utils");
+
+var _utils2 = _interopRequireWildcard(_utils);
+
+var _Emitter = require("./emitter");
+
+var _Emitter2 = _interopRequireWildcard(_Emitter);
+
+var _core = require("./core");
+
+var _core2 = _interopRequireWildcard(_core);
+
+var KVM = {};
+window.kvm = window.KVM = KVM;
+window.kvm.Module = window.kvm.module = _core2["default"];
+window.define = _core2["default"].define;
+_Object$assign(KVM, _utils2["default"]);
+
+_core2["default"].define("$emitter", function () {
+	return _Emitter2["default"];
+});
+
+},{"./core":34,"./emitter":35,"./utils":37,"babel-runtime/core-js/object/assign":1,"babel-runtime/helpers/interop-require-wildcard":8}],37:[function(require,module,exports){
+'use strict';
+
+var _Object$assign = require('babel-runtime/core-js/object/assign')['default'];
+
+Object.defineProperty(exports, '__esModule', {
+	value: true
+});
+var hasOwnProperty = Object.prototype.hasOwnProperty;
+
+var TYPES = 'Function,String,Array,Object,Number,Boolean'.split(',');
+
+var utils = {
+	isReference: function isReference(val) {
+		return this.isArray(val) || this.isObject(val);
+	},
+	isValue: function isValue(val) {
+		return !this.isReference(val);
+	},
+	isEmpty: function isEmpty(obj) {
+		if (obj == null) {
+			return true;
+		}if (obj.length > 0) {
+			return false;
+		}if (obj.length === 0) {
+			return true;
+		}for (var key in obj) {
+			if (hasOwnProperty.call(obj, key)) {
+				return false;
+			}
+		}
+
+		return true;
+	},
+	options: function options() {
+		for (var _len = arguments.length, source = Array(_len), _key = 0; _key < _len; _key++) {
+			source[_key] = arguments[_key];
+		}
+
+		return _Object$assign.apply(Object, source);
+	},
+	addQueryString: function addQueryString(url, query) {
+		var parser = document.createElement('a');
+		var str = '?';
+		var key = undefined;
+		parser.href = url.replace('?', '');
+		for (key in query) {
+			str += '' + key + '=' + query[key] + '&';
+		}
+		parser.search = str.replace(/&$/, '');
+		return parser.toString();
+	},
+	getQuery: function getQuery(url) {
+		var parser = document.createElement('a');
+		parser.href = url;
+		return this.resolveQuery(parser.search);
+	},
+	getHash: function getHash(url) {
+		var parser = document.createElement('a');
+		parser.href = url;
+		return parser.hash.replace(/^#/, '');
+	},
+	addHashString: function addHashString(url, hash) {
+		var parser = document.createElement('a');
+		parser.href = url;
+		parser.hash = '#' + hash.replace(/^#/, '');
+		return parser.toString();
+	},
+	resolveQuery: function resolveQuery(query) {
+		var vars = query.replace('?', '').split('&'),
+		    result = {};
+		for (var i = 0; i < vars.length; i++) {
+			if (vars[i]) {
+				var pair = vars[i].split('=');
+				result[decodeURIComponent(pair[0])] = decodeURIComponent(pair[1]);
+			}
+		}
+		return result;
+	},
+	isAbsolutePath: function isAbsolutePath(path) {
+		var reg = new RegExp('^(?:[a-z]+:)?//', 'i');
+		return reg.test(path);
+	},
+	resolvePath: function resolvePath() {
+		for (var _len2 = arguments.length, args = Array(_len2), _key2 = 0; _key2 < _len2; _key2++) {
+			args[_key2] = arguments[_key2];
+		}
+
+		var numUrls = args.length;
+
+		if (numUrls === 0) {
+			throw new Error('resolveUrl requires at least one argument; got none.');
+		}
+
+		var base = document.createElement('base');
+		base.href = args[0];
+
+		if (numUrls === 1) {
+			return base.href;
+		}
+
+		var head = document.getElementsByTagName('head')[0];
+		head.insertBefore(base, head.firstChild);
+
+		var a = document.createElement('a');
+		var resolved = '';
+
+		for (var index = 1; index < numUrls; index++) {
+			a.href = args[index];
+			resolved = a.href;
+			base.href = resolved;
+		}
+
+		head.removeChild(base);
+		return resolved;
+	},
+	before: function before(context, name, fn) {
+		var _fn;
+		context = context || window;
+		_fn = context[name];
+		context[name] = function () {
+			for (var _len3 = arguments.length, args = Array(_len3), _key3 = 0; _key3 < _len3; _key3++) {
+				args[_key3] = arguments[_key3];
+			}
+
+			var result = fn.apply(context, args);
+			args.push(result);
+			_fn.apply(context, args);
+			return result;
+		};
+	},
+	after: function after(context, name, fn) {
+		var _fn;
+		context = context || window;
+		_fn = context[name];
+		context[name] = function () {
+			for (var _len4 = arguments.length, args = Array(_len4), _key4 = 0; _key4 < _len4; _key4++) {
+				args[_key4] = arguments[_key4];
+			}
+
+			var result = _fn.apply(context, args);
+			args.push(result);
+			return fn.apply(context, args);
+		};
+	},
+	getCurrentScript: function getCurrentScript() {
+		var uri = (function _getCur() {
+			var doc = document;
+			var head = doc.head || doc.getElementsByTagName('head')[0] || doc.documentElement;
+			if (doc.currentScript) {
+				return doc.currentScript.src;
+			}
+			var stack = undefined;
+			try {
+				a.b.c();
+			} catch (e) {
+				stack = e.stack;
+				if (!stack && window.opera) {
+					stack = (String(e).match(/of linked script \S+/g) || []).join(' ');
+				}
+			}
+			if (stack) {
+				stack = stack.split(/[@ ]/g).pop();
+				stack = stack[0] == '(' ? stack.slice(1, -1) : stack;
+				return stack.replace(/(:\d+)?:\d+$/i, '');
+			}
+			var nodes = head.getElementsByTagName('script');
+			for (var i = 0, node = undefined; node = nodes[i++];) {
+				if (node.readyState === 'interactive') {
+					return node.className = node.src;
+				}
+			}
+		})();
+		return {
+			uri: uri.replace(/(#|\?).*/, ''),
+			query: this.getQuery(uri),
+			hash: this.getHash(uri)
+		};
+	}
+};
+
+TYPES.forEach(function (name) {
+	return utils['is' + name] = function (val) {
+		return Object.prototype.toString.call(val) === '[object ' + name + ']';
+	};
+});
+
+exports['default'] = utils;
+module.exports = exports['default'];
+
+},{"babel-runtime/core-js/object/assign":1}]},{},[36])

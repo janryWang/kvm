@@ -219,7 +219,7 @@
 			};
 			function needParse(depPaths){
 				var result = false;
-				kvm.forEach(depPaths,function(path){
+				depPaths.forEach(function(path){
 					if(path.id == "require"){
 						result = true;
 						return false;
