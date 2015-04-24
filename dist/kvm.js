@@ -963,6 +963,8 @@ var _classCallCheck = require("babel-runtime/helpers/class-call-check")["default
 
 var _Promise = require("babel-runtime/core-js/promise")["default"];
 
+var _Object$assign = require("babel-runtime/core-js/object/assign")["default"];
+
 var _interopRequireWildcard = require("babel-runtime/helpers/interop-require-wildcard")["default"];
 
 Object.defineProperty(exports, "__esModule", {
@@ -984,7 +986,8 @@ var Data = {
 	vars: {},
 	packages: {},
 	alias: {},
-	shims: {}
+	shims: {},
+	version: ""
 };
 
 var ModuleCache = {
@@ -1126,7 +1129,7 @@ var Driver = (function (_Emitter2) {
 		value: function load() {
 			var path = this.path;
 			var uri = path.uri;
-			uri = _utils2["default"].addQueryString(uri, path.query);
+			uri = _utils2["default"].addQueryString(uri, _Object$assign({ version: Data.version }, path.query));
 			uri = _utils2["default"].addHashString(uri, path.hash);
 			if (path.ext != "js") {
 				Hook.$emit("DRIVER_LOADER_" + path.ext.toLocaleUpperCase(), this);
@@ -1601,7 +1604,7 @@ var Dectorator = {
 exports["default"] = Dectorator;
 module.exports = exports["default"];
 
-},{"./emitter":35,"./utils":37,"babel-runtime/core-js/promise":3,"babel-runtime/helpers/class-call-check":4,"babel-runtime/helpers/create-class":5,"babel-runtime/helpers/get":6,"babel-runtime/helpers/inherits":7,"babel-runtime/helpers/interop-require-wildcard":8}],35:[function(require,module,exports){
+},{"./emitter":35,"./utils":37,"babel-runtime/core-js/object/assign":1,"babel-runtime/core-js/promise":3,"babel-runtime/helpers/class-call-check":4,"babel-runtime/helpers/create-class":5,"babel-runtime/helpers/get":6,"babel-runtime/helpers/inherits":7,"babel-runtime/helpers/interop-require-wildcard":8}],35:[function(require,module,exports){
 "use strict";
 
 var _createClass = require("babel-runtime/helpers/create-class")["default"];
@@ -1709,6 +1712,7 @@ var _core2 = _interopRequireWildcard(_core);
 var KVM = {};
 window.kvm = window.KVM = KVM;
 window.kvm.Module = window.kvm.module = _core2["default"];
+_core2["default"].define.amd = true;
 window.define = _core2["default"].define;
 _Object$assign(KVM, _utils2["default"]);
 
@@ -1763,7 +1767,9 @@ var utils = {
 		var key = undefined;
 		parser.href = url.replace('?', '');
 		for (key in query) {
-			str += '' + key + '=' + query[key] + '&';
+			if (query.hasOwnProperty(key) && query[key]) {
+				str += '' + key + '=' + query[key] + '&';
+			}
 		}
 		parser.search = str.replace(/&$/, '');
 		return parser.toString();
