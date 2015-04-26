@@ -365,7 +365,7 @@
 			var path = this.path;
 			var shim = Data.shims[path.id];
 			if (shim && !path.getModule()) {
-				if (kvm.isFunction(shim.factory)) {
+				if (kvm.isFunction(shim.factory) || kvm.isArray(shim.factory)) {
 					kvm.module.define(path.id, shim.factory);
 				} else {
 					kvm.module.define(path.id, function () {

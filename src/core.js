@@ -60,7 +60,7 @@ class Request extends Emitter {
 			if (!driver.module) {
 				this.drivers.push(driver);
 			} else {
-				that._done(driver.module);
+				return that._done(driver.module);
 			}
 		}
 		if (!driver.module) {
@@ -71,6 +71,7 @@ class Request extends Emitter {
 		} else {
 			that._done(driver.module);
 		}
+		return this;
 	}
 
 	_parseReqs() {
@@ -89,6 +90,7 @@ class Request extends Emitter {
 		} else {
 			that.callback([]);
 		}
+		return this;
 	}
 
 	_checkDone() {
@@ -102,12 +104,14 @@ class Request extends Emitter {
 				this.callback(this.results);
 			}
 		}
+		return this;
 	}
 
 	send() {
 		this.drivers.forEach(function (driver) {
 			driver.load();
 		});
+		return this;
 	}
 
 

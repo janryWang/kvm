@@ -48,9 +48,9 @@
         res();
         console.log("he he");
     });
-    kvm.module.invoke(["world?version=0.0.1"],function(res){
+    kvm.module.invoke(["world?version=0.0.1",function(res){
         console.log(res,"querystring");
-    });
+    }]);
 </script>
 </body>
 </html>

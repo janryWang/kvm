@@ -1034,7 +1034,7 @@ var Request = (function (_Emitter) {
 				if (!driver.module) {
 					this.drivers.push(driver);
 				} else {
-					that._done(driver.module);
+					return that._done(driver.module);
 				}
 			}
 			if (!driver.module) {
@@ -1045,6 +1045,7 @@ var Request = (function (_Emitter) {
 			} else {
 				that._done(driver.module);
 			}
+			return this;
 		}
 	}, {
 		key: "_parseReqs",
@@ -1067,6 +1068,7 @@ var Request = (function (_Emitter) {
 			} else {
 				that.callback([]);
 			}
+			return this;
 		}
 	}, {
 		key: "_checkDone",
@@ -1082,6 +1084,7 @@ var Request = (function (_Emitter) {
 					this.callback(this.results);
 				}
 			}
+			return this;
 		}
 	}, {
 		key: "send",
@@ -1089,6 +1092,7 @@ var Request = (function (_Emitter) {
 			this.drivers.forEach(function (driver) {
 				driver.load();
 			});
+			return this;
 		}
 	}], [{
 		key: "fetch",
