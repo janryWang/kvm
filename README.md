@@ -10,6 +10,8 @@ KVM.js 模块管理器(v0.2.0),带给你不一样的模块管理体验
 
 #bower安装
 
+[![Greenkeeper badge](https://badges.greenkeeper.io/janryWang/kvm.svg)](https://greenkeeper.io/)
+
 ```
 bower install kvm
 ```
